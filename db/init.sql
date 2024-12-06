@@ -36,6 +36,21 @@ CREATE TABLE `genres` (
   PRIMARY KEY (`id`)
 ) AUTO_INCREMENT=10;
 
+-- userテーブルの削除と再作成
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL DEFAULT '',
+  `email` VARCHAR(255) NOT NULL DEFAULT '',
+  `avatar_url` VARCHAR(255) DEFAULT NULL,
+  `password` VARCHAR(255) NOT NULL DEFAULT '',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
+);
+
 -- データのロード
 LOAD DATA INFILE '/docker-entrypoint-initdb.d/data.csv'
 INTO TABLE books
@@ -62,3 +77,7 @@ INSERT INTO `genres` (`name`, `description`) VALUES
 ('音楽', '音楽に関する書籍'),
 ('ドラマ', '人間関係や感情を描いた作品'),
 ('教育', '教育に関する書籍');
+
+INSERT INTO `users` (`name`, `email`, `password`, `avatar_url`) VALUES
+('Julia', 'julia@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'http://localhost:18080/images/avatars/avatar02.jpg'),
+('Steve', 'steve@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'http://localhost:18080/images/avatars/avatar07.jpg');

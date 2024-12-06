@@ -7,7 +7,8 @@ services:
       - "18080:80" # ホストの80番ポートで外部からアクセスできるように設定
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf # Apacheの設定ファイルをコンテナにマウント
-      - ./apache/images:/usr/local/apache2/htdocs/images/my-books # 画像ファイルをコンテナにマウント
+      - ./apache/images:/usr/local/apache2/htdocs/images/my-books # 書籍の画像ファイルをコンテナにマウント
+      - ./apache/avatars:/usr/local/apache2/htdocs/images/avatars # アバター画像ファイルをコンテナにマウント
     depends_on:
       - spring-boot-app
 
