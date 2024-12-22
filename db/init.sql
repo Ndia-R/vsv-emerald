@@ -3,8 +3,12 @@ CREATE DATABASE `my-books-db`;
 
 USE `my-books-db`;
 
--- bookテーブルの削除と再作成
 DROP TABLE IF EXISTS `books`;
+DROP TABLE IF EXISTS `genres`;
+DROP TABLE IF EXISTS `user_roles`;
+DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `roles`;
+
 CREATE TABLE `books` (
   `id` VARCHAR(255) NOT NULL,
   `title` VARCHAR(255) NOT NULL DEFAULT '',
@@ -24,31 +28,46 @@ CREATE TABLE `books` (
   UNIQUE KEY `id_UNIQUE` (`id`)
 );
 
--- genreテーブルの削除と再作成
-DROP TABLE IF EXISTS `genres`;
 CREATE TABLE `genres` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(255) NOT NULL DEFAULT '',
-  `description` TEXT NOT NULL,
+  `description` VARCHAR(255) NOT NULL DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) AUTO_INCREMENT=10;
 
--- userテーブルの削除と再作成
-DROP TABLE IF EXISTS `users`;
+
 CREATE TABLE `users` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL DEFAULT '',
   `email` VARCHAR(255) NOT NULL DEFAULT '',
-  `avatar_url` VARCHAR(255) DEFAULT NULL,
   `password` VARCHAR(255) NOT NULL DEFAULT '',
+  `name` VARCHAR(255) NOT NULL DEFAULT '',
+  `avatar_url` VARCHAR(255) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+);
+
+CREATE TABLE `roles` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL DEFAULT '',
+  `description` VARCHAR(255) NOT NULL DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id_UNIQUE` (`id`)
+  UNIQUE KEY `name_UNIQUE` (`name`)
+);
+
+CREATE TABLE `user_roles` (
+  `user_id` INT(11) NOT NULL,
+  `role_id` INT(11) NOT NULL,
+  PRIMARY KEY (`user_id`, `role_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON DELETE CASCADE
 );
 
 -- データのロード
@@ -81,3 +100,12 @@ INSERT INTO `genres` (`name`, `description`) VALUES
 INSERT INTO `users` (`name`, `email`, `password`, `avatar_url`) VALUES
 ('Julia', 'julia@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'http://localhost:18080/images/avatars/avatar02.jpg'),
 ('Steve', 'steve@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'http://localhost:18080/images/avatars/avatar07.jpg');
+
+INSERT INTO `roles` (`name`, `description`) VALUES
+('ROLE_ADMIN', '管理者権限'),
+('ROLE_USER', 'ユーザー権限');
+
+INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
+(1, 1),
+(1, 2),
+(2, 2);

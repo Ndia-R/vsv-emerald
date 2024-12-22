@@ -21,6 +21,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/my-books-db
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: password
+      SPRING_APP_JWT_SECRET: Ry9CqEZVzQH7k1234abcdefghijklmnopqrstuvwxyzABCD+/=
+      SPRING_APP_JWT_ACCESS_EXPIRATION: 3600
+      SPRING_APP_JWT_REFRESH_EXPIRATION: 86400
     depends_on:
       - db
 
