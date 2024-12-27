@@ -98,8 +98,8 @@ INSERT INTO `genres` (`name`, `description`) VALUES
 ('教育', '教育に関する書籍');
 
 INSERT INTO `users` (`name`, `email`, `password`, `avatar_url`) VALUES
-('Julia', 'julia@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'http://localhost:18080/images/avatars/avatar02.jpg'),
-('Steve', 'steve@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'http://localhost:18080/images/avatars/avatar07.jpg');
+('Julia', 'julia@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'https://localhost/images/avatars/avatar02.png'),
+('Steve', 'steve@gmail.com', '$2a$10$E7FzFP73ImXXFHUmUUmXtuDrJnp0gZ3Zb3XJluLEW7tfnVmh5FLwC', 'https://localhost/images/avatars/avatar07.png');
 
 INSERT INTO `roles` (`name`, `description`) VALUES
 ('ROLE_ADMIN', '管理者権限'),

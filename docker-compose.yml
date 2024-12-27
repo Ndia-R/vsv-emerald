@@ -4,11 +4,15 @@ services:
     image: httpd:2.4-alpine
     container_name: apache
     ports:
-      - "18080:80" # ホストの80番ポートで外部からアクセスできるように設定
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf # Apacheの設定ファイルをコンテナにマウント
-      - ./apache/images:/usr/local/apache2/htdocs/images/my-books # 書籍の画像ファイルをコンテナにマウント
-      - ./apache/avatars:/usr/local/apache2/htdocs/images/avatars # アバター画像ファイルをコンテナにマウント
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf # Apacheの設定(httpd)
+      - ./apache/httpd-ssl.conf:/usr/local/apache2/conf/extra/httpd-ssl.conf # Apacheの設定(httpd-ssl)
+      - ./apache/images:/usr/local/apache2/htdocs/images/my-books # 書籍の画像
+      - ./apache/avatars:/usr/local/apache2/htdocs/images/avatars # アバター画像
+      - ./apache/server.crt:/usr/local/apache2/conf/server.crt # 証明書
+      - ./apache/server.key:/usr/local/apache2/conf/server.key # 秘密鍵
     depends_on:
       - spring-boot-app
 
