@@ -13,6 +13,8 @@ services:
       - ./apache/avatars:/usr/local/apache2/htdocs/images/avatars # アバター画像
       - ./apache/server.crt:/usr/local/apache2/conf/server.crt # 証明書
       - ./apache/server.key:/usr/local/apache2/conf/server.key # 秘密鍵
+    environment:
+      - TZ=Asia/Tokyo
     depends_on:
       - spring-boot-app
 
@@ -28,6 +30,7 @@ services:
       SPRING_APP_JWT_SECRET: Ry9CqEZVzQH7k1234abcdefghijklmnopqrstuvwxyzABCD+/=
       SPRING_APP_JWT_ACCESS_EXPIRATION: 3600
       SPRING_APP_JWT_REFRESH_EXPIRATION: 86400
+      TZ: Asia/Tokyo
     depends_on:
       - db
 
@@ -37,9 +40,11 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: my-books-db
+      TZ: Asia/Tokyo
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./db/data.csv:/docker-entrypoint-initdb.d/data.csv
+      - ./db/books.csv:/docker-entrypoint-initdb.d/books.csv
+      - ./db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
       - db_data:/var/lib/mysql
     command: --secure-file-priv=/docker-entrypoint-initdb.d
