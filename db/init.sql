@@ -193,8 +193,13 @@ INSERT INTO `reviews` (`user_id`, `book_id`, `comment`, `rating`) VALUES
 (1, 'pDYIwtdahwkp', '私もこんな経験をしたいと思いました。', 5.0);
 
 INSERT INTO `favorites` (`user_id`, `book_id`) VALUES
+(1, 'afcIMuetDuzj'),
+(2, 'afcIMuetDuzj'),
+(3, 'afcIMuetDuzj'),
 (4, 'afcIMuetDuzj'),
 (4, 'pDYIwtdahwkp'),
+(5, 'pDYIwtdahwkp'),
+(6, 'pDYIwtdahwkp'),
 (3, '9UizZw491wye'),
 (3, 'ln5NiMJq02V7');
 
