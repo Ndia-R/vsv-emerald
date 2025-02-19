@@ -45,6 +45,7 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./db/books.csv:/docker-entrypoint-initdb.d/books.csv
       - ./db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
+      - ./db/book_content_pages.csv:/docker-entrypoint-initdb.d/book_content_pages.csv
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
       - db_data:/var/lib/mysql
     command: --secure-file-priv=/docker-entrypoint-initdb.d

@@ -3,7 +3,6 @@ CREATE DATABASE `my-books-db`;
 
 USE `my-books-db`;
 
-
 DROP TABLE IF EXISTS `books`;
 DROP TABLE IF EXISTS `genres`;
 DROP TABLE IF EXISTS `book_genres`;
@@ -12,7 +11,9 @@ DROP TABLE IF EXISTS `roles`;
 DROP TABLE IF EXISTS `user_roles`;
 DROP TABLE IF EXISTS `reviews`;
 DROP TABLE IF EXISTS `favorites`;
-DROP TABLE IF EXISTS `my_lists`;
+DROP TABLE IF EXISTS `bookmarks`;
+DROP TABLE IF EXISTS `book_chapters`;
+DROP TABLE IF EXISTS `book_content_pages`;
 
 
 CREATE TABLE `books` (
@@ -28,7 +29,7 @@ CREATE TABLE `books` (
   `image_url` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE `genres` (
@@ -37,7 +38,7 @@ CREATE TABLE `genres` (
   `description` VARCHAR(255) NOT NULL DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE `book_genres` (
@@ -50,13 +51,13 @@ CREATE TABLE `book_genres` (
 
 CREATE TABLE `users` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `email` VARCHAR(255) NOT NULL DEFAULT '',
+  `email` VARCHAR(255) NOT NULL UNIQUE,
   `password` VARCHAR(255) NOT NULL DEFAULT '',
   `name` VARCHAR(255) NOT NULL DEFAULT '',
   `avatar_url` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE `roles` (
@@ -65,7 +66,7 @@ CREATE TABLE `roles` (
   `description` VARCHAR(255) NOT NULL DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE `user_roles` (
@@ -77,14 +78,15 @@ CREATE TABLE `user_roles` (
 );
 
 CREATE TABLE `reviews` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` BIGINT NOT NULL,
   `book_id` VARCHAR(255) NOT NULL,
-  `comment` TEXT NOT NULL,
-  `rating` DECIMAL(2, 1) CHECK (`rating` >= 0 AND `rating` <= 5),
+  `comment` VARCHAR(1000) NOT NULL DEFAULT '',
+  `rating` DECIMAL(2, 1) NOT NULL DEFAULT 0.0 CHECK (`rating` >= 0 AND `rating` <= 5),
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`user_id`, `book_id`),
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE (`user_id`, `book_id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
 );
@@ -94,21 +96,48 @@ CREATE TABLE `favorites` (
   `book_id` VARCHAR(255) NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (`user_id`, `book_id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
 );
 
-CREATE TABLE `my_lists` (
+CREATE TABLE `bookmarks` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` BIGINT NOT NULL,
   `book_id` VARCHAR(255) NOT NULL,
+  `chapter_number` INT NOT NULL,
+  `page_number` INT NOT NULL,
+  `note` VARCHAR(1000) NOT NULL DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`user_id`, `book_id`),
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE (`user_id`, `book_id`, `chapter_number`, `page_number`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `book_chapters` (
+  `book_id` VARCHAR(255) NOT NULL,
+  `chapter_number` INT NOT NULL,
+  `title` VARCHAR(255) NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (`book_id`, `chapter_number`),
+  FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `book_content_pages` (
+  `book_id` VARCHAR(255) NOT NULL,
+  `chapter_number` INT NOT NULL,
+  `page_number` INT NOT NULL,
+  `content` TEXT NOT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (`book_id`, `chapter_number`, `page_number`),
+  FOREIGN KEY (`book_id`, `chapter_number`) REFERENCES `book_chapters`(`book_id`, `chapter_number`) ON DELETE CASCADE
 );
 
 -- データのロード
@@ -203,7 +232,29 @@ INSERT INTO `favorites` (`user_id`, `book_id`) VALUES
 (3, '9UizZw491wye'),
 (3, 'ln5NiMJq02V7');
 
-INSERT INTO `my_lists` (`user_id`, `book_id`) VALUES
-(4, '3BndPAiEFnjB'),
-(4, '3gNJnRcrwrUH'),
-(3, 'v21pjIlzDua1');
+INSERT INTO `bookmarks` (`user_id`, `book_id`, `chapter_number`, `page_number`, `note`) VALUES
+(1, 'afcIMuetDuzj', 1, 1, 'もう一度読み直す'),
+(3, 'afcIMuetDuzj', 3, 3, 'このページのフレーズが好き'),
+(4, 'afcIMuetDuzj', 6, 4, 'この感動を誰かに伝える');
+
+INSERT INTO `book_chapters` (`book_id`, `chapter_number`, `title`) VALUES
+('afcIMuetDuzj', 1, 'プロローグ'),
+('afcIMuetDuzj', 2, '第一章：湖畔の招待状'),
+('afcIMuetDuzj', 3, '第二章：運命の出会い'),
+('afcIMuetDuzj', 4, '第三章：舞踏会の奇跡'),
+('afcIMuetDuzj', 5, '第四章：消えゆく光'),
+('afcIMuetDuzj', 6, '第五章：新たな誓い'),
+('aBcDeFgHiJkL', 1, '第1章：ドラゴンとは何か？'),
+('aBcDeFgHiJkL', 2, '第2章：世界のドラゴン伝承'),
+('aBcDeFgHiJkL', 3, '第3章：ドラゴンと人類の歴史'),
+('aBcDeFgHiJkL', 4, '第4章：ドラゴンの姿と能力'),
+('aBcDeFgHiJkL', 5, '第5章：ドラゴンと文化・信仰'),
+('aBcDeFgHiJkL', 6, '第6章：ドラゴンの科学的解釈と実在の可能性'),
+('aBcDeFgHiJkL', 7, '第7章：現代社会におけるドラゴンの影響');
+
+LOAD DATA INFILE '/docker-entrypoint-initdb.d/book_content_pages.csv'
+INTO TABLE book_content_pages
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+(`book_id`, `chapter_number`, `page_number`, `content`);
