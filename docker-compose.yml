@@ -3,50 +3,110 @@ services:
     build:
       context: ./web
     ports:
-      - "443:443"
-      - "80:80"
+      - 443:443
+      - 80:80
+    environment:
+      TZ: Asia/Tokyo
     volumes:
       - ./web/nginx.conf:/etc/nginx/nginx.conf
       - ./web/default.conf:/etc/nginx/conf.d/default.conf
       - ./web/certs:/etc/nginx/ssl
       - ./web/images:/usr/share/nginx/html/images
-    environment:
-      - TZ=Asia/Tokyo
     depends_on:
-      - my-books-api
+      - my-books-api-v0
+      - my-books-api-v1
+      - my-books-api-v2
 
-  my-books-api:
+  my-books-api-v0:
     build:
-      context: ./api/my-books-api
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://my-books-db:3306/my-books-db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_APP_JWT_SECRET: Ry9CqEZVzQH7k1234abcdefghijklmnopqrstuvwxyzABCD+/=
-      SPRING_APP_JWT_ACCESS_EXPIRATION: 3600
-      SPRING_APP_JWT_REFRESH_EXPIRATION: 86400
-      TZ: Asia/Tokyo
+      context: ./api/my-books-api/v0
     expose:
-      - "8080"
+      - 8080
+    environment:
+      TZ: Asia/Tokyo
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_APP_JWT_SECRET: ${JWT_SECRET}
+      SPRING_APP_JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION}
+      SPRING_APP_JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      APP_API_VERSION: ${API_VERSION_V0}
+      APP_SWAGGER_SERVER_URL: ${SWAGGER_SERVER_URL_V0}
+      APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V0}
+      SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V0}
+      SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V0}
     depends_on:
-      - my-books-db
+      my-books-db:
+        condition: service_healthy
+
+  my-books-api-v1:
+    build:
+      context: ./api/my-books-api/v1
+    expose:
+      - 8080
+    environment:
+      TZ: Asia/Tokyo
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_APP_JWT_SECRET: ${JWT_SECRET}
+      SPRING_APP_JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION}
+      SPRING_APP_JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      APP_API_VERSION: ${API_VERSION_V1}
+      APP_SWAGGER_SERVER_URL: ${SWAGGER_SERVER_URL_V1}
+      APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V1}
+      SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V1}
+      SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V1}
+    depends_on:
+      my-books-db:
+        condition: service_healthy
+  
+  my-books-api-v2:
+    build:
+      context: ./api/my-books-api/v2
+    expose:
+      - 8080
+    environment:
+      TZ: Asia/Tokyo
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_APP_JWT_SECRET: ${JWT_SECRET}
+      SPRING_APP_JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION}
+      SPRING_APP_JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION}
+      APP_API_VERSION: ${API_VERSION_V2}
+      APP_SWAGGER_SERVER_URL: ${SWAGGER_SERVER_URL_V2}
+      APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V2}
+      SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V2}
+      SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V2}
+    depends_on:
+      my-books-db:
+        condition: service_healthy
 
   my-books-db:
     image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: my-books-db
-      TZ: Asia/Tokyo
     expose:
-      - "3306"
+      - 3306
+    environment:
+      TZ: Asia/Tokyo
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     volumes:
-      - ./db/my-books-db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./db/my-books-db/books.csv:/docker-entrypoint-initdb.d/books.csv
+      - ./db/my-books-db/book_chapter_page_contents.csv:/docker-entrypoint-initdb.d/book_chapter_page_contents.csv
+      - ./db/my-books-db/book_favorites.csv:/docker-entrypoint-initdb.d/book_favorites.csv
       - ./db/my-books-db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
-      - ./db/my-books-db/book_content_pages.csv:/docker-entrypoint-initdb.d/book_content_pages.csv
+      - ./db/my-books-db/book_reviews.csv:/docker-entrypoint-initdb.d/book_reviews.csv
+      - ./db/my-books-db/books.csv:/docker-entrypoint-initdb.d/books.csv
+      - ./db/my-books-db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./db/my-books-db/my.cnf:/etc/mysql/conf.d/my.cnf
       - my-books-db-data:/var/lib/mysql
     command: --secure-file-priv=/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   my-books-db-data:

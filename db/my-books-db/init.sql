@@ -13,7 +13,7 @@ DROP TABLE IF EXISTS `reviews`;
 DROP TABLE IF EXISTS `favorites`;
 DROP TABLE IF EXISTS `bookmarks`;
 DROP TABLE IF EXISTS `book_chapters`;
-DROP TABLE IF EXISTS `book_content_pages`;
+DROP TABLE IF EXISTS `book_chapter_page_contents`;
 
 
 CREATE TABLE `books` (
@@ -22,11 +22,14 @@ CREATE TABLE `books` (
   `description` TEXT NOT NULL,
   `authors` VARCHAR(255) NOT NULL DEFAULT '',
   `publisher` VARCHAR(255) NOT NULL DEFAULT '',
-  `published_date` DATE NOT NULL,
-  `price` INT NOT NULL DEFAULT 0,
-  `page_count` INT NOT NULL DEFAULT 0,
+  `publication_date` DATE NOT NULL,
+  `price` BIGINT NOT NULL DEFAULT 0,
+  `page_count` BIGINT NOT NULL DEFAULT 0,
   `isbn` VARCHAR(255) NOT NULL DEFAULT '',
   `image_path` VARCHAR(255) DEFAULT NULL,
+  `average_rating` DECIMAL(3, 2) NOT NULL DEFAULT 0.00,
+  `review_count` BIGINT NOT NULL DEFAULT 0,
+  `popularity` DECIMAL(8, 2) NOT NULL DEFAULT 0.000,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE
@@ -92,34 +95,20 @@ CREATE TABLE `reviews` (
 );
 
 CREATE TABLE `favorites` (
-  `user_id` BIGINT NOT NULL,
-  `book_id` VARCHAR(255) NOT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (`user_id`, `book_id`),
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
-);
-
-CREATE TABLE `bookmarks` (
   `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` BIGINT NOT NULL,
   `book_id` VARCHAR(255) NOT NULL,
-  `chapter_number` INT NOT NULL,
-  `page_number` INT NOT NULL,
-  `note` VARCHAR(1000) NOT NULL DEFAULT '',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
-  UNIQUE (`user_id`, `book_id`, `chapter_number`, `page_number`),
+  UNIQUE (`user_id`, `book_id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
 );
 
 CREATE TABLE `book_chapters` (
   `book_id` VARCHAR(255) NOT NULL,
-  `chapter_number` INT NOT NULL,
+  `chapter_number` BIGINT NOT NULL,
   `title` VARCHAR(255) NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -128,16 +117,30 @@ CREATE TABLE `book_chapters` (
   FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
 );
 
-CREATE TABLE `book_content_pages` (
+CREATE TABLE `book_chapter_page_contents` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `book_id` VARCHAR(255) NOT NULL,
-  `chapter_number` INT NOT NULL,
-  `page_number` INT NOT NULL,
+  `chapter_number` BIGINT NOT NULL,
+  `page_number` BIGINT NOT NULL,
   `content` TEXT NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (`book_id`, `chapter_number`, `page_number`),
+  UNIQUE (`book_id`, `chapter_number`, `page_number`),
   FOREIGN KEY (`book_id`, `chapter_number`) REFERENCES `book_chapters`(`book_id`, `chapter_number`) ON DELETE CASCADE
+);
+
+CREATE TABLE `bookmarks` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` BIGINT NOT NULL,
+  `page_content_id` BIGINT NOT NULL,
+  `note` VARCHAR(1000) NOT NULL DEFAULT '',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE (`user_id`, `page_content_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`page_content_id`) REFERENCES `book_chapter_page_contents`(`id`) ON DELETE CASCADE
 );
 
 -- データのロード
@@ -146,7 +149,7 @@ INTO TABLE books
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
-(`id`, `title`, `description`, `authors`, `publisher`, `published_date`, `price`, `page_count`, `isbn`, `image_path`);
+(`id`, `title`, `description`, `authors`, `publisher`, `publication_date`, `price`, `page_count`, `isbn`, `image_path`);
 
 INSERT INTO `genres` (`name`, `description`) VALUES
 ('ミステリー', '謎解きや推理をテーマにした作品'),
@@ -204,143 +207,19 @@ INSERT INTO `user_roles` (`user_id`, `role_id`) VALUES
 (3, 1),
 (4, 1);
 
-INSERT INTO `reviews` (`user_id`, `book_id`, `comment`, `rating`) VALUES
-(1, 'afcIMuetDuzj', '知識の宝庫で、読み終える頃には少し賢くなった気がした。', 4.5),
-(2, 'afcIMuetDuzj', '人生観が変わるほどの深い洞察が詰まっていました。', 3.0),
-(3, 'afcIMuetDuzj', '読む手が止まらないほど引き込まれた。', 3.5),
-(4, 'afcIMuetDuzj', '心に響く言葉が何度も胸を打った。', 5.0),
-(5, 'afcIMuetDuzj', '言葉の美しさに何度もページをめくり直した。', 3.5),
-(6, 'afcIMuetDuzj', '想像力をかき立てられる素晴らしいストーリーだった。', 3.5),
-(7, 'afcIMuetDuzj', '感動しました。何度も読み直したいと思いました。', 3.0),
-(8, 'afcIMuetDuzj', '登場人物に感情移入しすぎて泣いてしまった。', 5.0),
-(9, 'afcIMuetDuzj', '終わるのが惜しいほど楽しかった。', 4.5),
-(10, 'afcIMuetDuzj', '感動的な結末に、読後の余韻が心地よかった。', 3.5),
-(1, '9UizZw491wye', '読み進むにつれドンドン引き込まれていきました。', 3.5),
-(2, '9UizZw491wye', '首を長くして待っていました。非常に楽しかったです。', 3.0),
-(3, '9UizZw491wye', '読んでいる間、時間を忘れるほど夢中になれました。', 3.0),
-(4, '9UizZw491wye', '物語の展開が巧妙で、予想を超える展開が続いて面白かったです。', 3.0),
-(1, 'pDYIwtdahwkp', '私もこんな経験をしたいと思いました。', 5.0),
-(1, 'aBcDeFgHiJkL', 'ドラゴン好きにはたまらない一冊！神話や伝説だけでなく、歴史的な背景や科学的視点からの考察もあり、読み応え抜群。イラストも豊富で、ページをめくるたびにワクワクしました。' ,5.0),
-(2, 'aBcDeFgHiJkL', '地域ごとのドラゴンの違いが詳しく解説されていて、とても興味深かったです。もう少し現代のフィクション作品に登場するドラゴンの分析もあると、さらに楽しめたかも。' ,4.5),
-(3, 'aBcDeFgHiJkL', '図鑑としての完成度が高く、資料としても役立つ内容でした。ただ、一部の科学的な考察は少し専門的すぎて、難しく感じる部分もありました。' ,4.5),
-(4, 'aBcDeFgHiJkL', 'ドラゴンの文化的意義を掘り下げた内容がとても面白かった！西洋と東洋のドラゴンの違いがわかりやすく、歴史を学びながら楽しめました。' ,4.0),
-(5, 'aBcDeFgHiJkL', 'ビジュアルがとても美しく、眺めるだけでも価値のある本。ただ、もう少しストーリー仕立てで読みやすい構成だったら、もっと楽しく読めたかもしれません。' ,3.5),
-(7, 'aBcDeFgHiJkL', '神話や伝承の部分が特に面白く、各地域ごとのドラゴンの違いを比較できるのが良かった！ファンタジー好きなら楽しめると思います。' ,4.0),
-(8, 'aBcDeFgHiJkL', '図鑑というよりも資料集に近い印象。もう少し物語的なエピソードがあると、より楽しめたかもしれません。' ,3.5),
-(9, 'aBcDeFgHiJkL', '図鑑としての内容はしっかりしているけど、専門的すぎて途中で飽きてしまった。もう少し初心者向けの解説があると、もっと読みやすかったかも。' ,2.5),
-(10, 'aBcDeFgHiJkL', '伝説と科学の両面からドラゴンを解説していて、知的好奇心を刺激されました！ドラゴンのリアルな生態を考察する部分が特に面白かったです。' ,5.0),
-(1, 'C4hD3jZ8rK6e', '最後まで予測できない展開に引き込まれました！リゾートの華やかな雰囲気と不穏な空気のコントラストが絶妙で、一気読みしてしまいました。', 5.0),
-(2, 'C4hD3jZ8rK6e', 'ミステリーとしての完成度が高く、伏線の回収も見事。特にフラミンゴの羽が象徴する意味が明らかになるシーンにはゾクッとしました！', 4.5),
-(3, 'C4hD3jZ8rK6e', 'ジェイク刑事のキャラクターが魅力的で、彼の過去が事件とどう絡むのかも見どころ。もう少し犯人の動機が深掘りされていたら、もっと楽しめたかも。', 4.0),
-(4, 'C4hD3jZ8rK6e', 'サスペンス要素と心理描写が絶妙に絡み合い、最後のどんでん返しには驚かされました！読後も余韻が残る素晴らしい作品です。', 5.0),
-(5, 'C4hD3jZ8rK6e', '事件の舞台となるリゾートの描写が美しく、雰囲気は抜群。ただ、途中で少し展開が冗長に感じる部分もありました。', 3.5),
-(6, 'C4hD3jZ8rK6e', 'ミステリーとしては悪くないけど、登場人物の背景がもう少し掘り下げられていると感情移入しやすかったかも。', 3.0),
-(7, 'C4hD3jZ8rK6e', 'フラミンゴの羽の謎が解明される過程が面白かった！セレブたちの秘密が絡むことで、単なる殺人事件以上の深みが出ていたと思います。', 4.0),
-(8, 'C4hD3jZ8rK6e', '期待していたほどの緊張感がなく、ストーリーの進行が少し遅く感じました。後半の展開は良かったので、序盤がもう少しテンポよければ…。', 2.5),
-(9, 'C4hD3jZ8rK6e', '一見バラバラに見えた手がかりが、最後にひとつの真実へと収束する流れが見事。フラミンゴの羽に隠された意味が明かされた瞬間は鳥肌もの！', 4.5),
-(1, 'Hh5r4Kj9Tb8v', '音楽と自然、そして恋愛が美しく絡み合った作品でした。ツルの舞から生まれる旋律の描写が繊細で、読んでいるだけで音が聞こえてくるようでした。', 5.0),
-(2, 'Hh5r4Kj9Tb8v', 'サキの芸術への情熱とハヤトとの恋の狭間で揺れる心情が丁寧に描かれていて、とても共感できました。ラストの余韻が素晴らしかったです。', 5.0),
-(3, 'Hh5r4Kj9Tb8v', 'ツルの美しさと音楽の表現が見事でした。ただ、恋愛パートがもう少し深掘りされていたら、もっと感情移入できたかもしれません。', 4.5),
-(4, 'Hh5r4Kj9Tb8v', '自然の美しさと芸術の力が融合した、心に響く物語。サキの成長が丁寧に描かれていて、彼女の決断に胸が熱くなりました。', 5.0),
-(7, 'Hh5r4Kj9Tb8v', 'ツルの舞からインスピレーションを得るという設定がユニークで印象的でした。芸術に生きる人の葛藤がリアルに描かれていたのが良かったです。', 4.5),
-(9, 'Hh5r4Kj9Tb8v', '音楽と恋愛のバランスが絶妙で、読んでいて心が温かくなりました。ツルの存在が象徴的で、幻想的な雰囲気を醸し出していたのも素敵。', 5.0),
-(10, 'Hh5r4Kj9Tb8v', '芸術家としてのサキの成長が描かれているのは良かったけど、ハヤトのキャラクターがもう少し掘り下げられていたら、恋愛要素にももっと深みが出たと思う。', 4.0),
-(2, 'dJ4fLnQ2ZcR3', '画家の残した絵が謎解きの手がかりになっているのが面白かった！ヤギが単なるペットではなく、物語の核心に関わる存在だったのが意外で良かったです。', 4.5),
-(3, 'dJ4fLnQ2ZcR3', '美術ミステリーとして楽しめる一冊。もう少し探偵のキャラクターに深みがあると、もっと感情移入できたかも。', 4.0),
-(4, 'dJ4fLnQ2ZcR3', 'アイデアは魅力的だけど、途中の展開がややゆっくりで、もう少しテンポよく進んでほしかった。ただ、結末には驚かされました！', 3.5),
-(5, 'dJ4fLnQ2ZcR3', 'ミステリーとしては面白かったけど、美術の専門的な部分が多くて少し難しく感じるところも。もう少しライトな読み口だと良かったかも。', 3.0),
-(6, 'dJ4fLnQ2ZcR3', 'ヤギがここまでストーリーに絡んでくるとは思わなかった！芸術と動物を絡めたユニークな設定が新鮮で、非常に楽しめました。', 5.0),
-(7, 'dJ4fLnQ2ZcR3', '絵画に込められた意味を探るミステリーとして秀逸。ヤギの行動に注目すると、序盤からヒントが散りばめられていて、再読したくなる作品でした。', 4.0),
-(8, 'dJ4fLnQ2ZcR3', '画家の失踪の謎には興味を惹かれたけど、全体的に展開がゆったりしていて、もう少し緊迫感が欲しかった。', 2.5),
-(10, 'dJ4fLnQ2ZcR3', '山小屋の描写や画家の背景など、雰囲気は抜群。ただ、結末が少しあっさりしていて、もう少し余韻が欲しかった。', 3.5),
-(1, 'bU4W2hM7x9D5', '宙を旅するマンドリルという設定が斬新で、ワクワクしながら読み進めました！未知の生物との出会いがスリリングで、最後まで飽きさせません。', 5.0),
-(2, 'bU4W2hM7x9D5', 'マンドリルたちの個性がしっかり描かれていて、仲間との絆に感動しました。もう少し科学的な説明があると、さらにリアリティが増したかも？', 4.5),
-(3, 'bU4W2hM7x9D5', '宇宙探検と友情の要素がバランスよく描かれていて楽しかった！特に異星人とのやりとりがユーモラスで、読んでいてニヤリとしてしまう場面も。', 4.5),
-(4, 'bU4W2hM7x9D5', 'まさかマンドリルが宇宙に行くなんて…！設定の意外性だけでなく、ストーリーも練られていて、熱い冒険譚として大満足の一冊でした。', 5.0),
-(5, 'bU4W2hM7x9D5', 'ストーリーは面白かったけど、もう少しキャラクターの掘り下げが欲しかったかも。特に敵キャラの背景が薄く感じました。', 3.5),
-(6, 'bU4W2hM7x9D5', '設定はユニークだけど、展開が王道すぎて予想の範囲内だったかな。でも、宇宙の描写は美しくて雰囲気は最高でした！', 3.0),
-(7, 'bU4W2hM7x9D5', 'SFとしての魅力もしっかりありつつ、マンドリルたちのユーモラスな掛け合いが楽しかった！続編があるならぜひ読みたいです。', 4.5),
-(8, 'bU4W2hM7x9D5', 'マンドリルという設定がユニークすぎて、個人的には感情移入が難しかった…。でも、宇宙の冒険シーンは迫力があって良かったです。', 2.5),
-(9, 'bU4W2hM7x9D5', '宇宙の神秘と冒険のワクワク感がたっぷり詰まった一冊！マンドリルたちの成長も丁寧に描かれていて、読み終わった後に爽やかな余韻が残りました。', 5.0),
-(10, 'bU4W2hM7x9D5', 'アイデアは素晴らしいけど、物語の後半が少し駆け足に感じました。もっとじっくり惑星探査のシーンを描いてほしかったです。', 3.5);
+LOAD DATA INFILE '/docker-entrypoint-initdb.d/book_reviews.csv'
+INTO TABLE reviews
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+(`user_id`, `book_id`, `comment`, `rating`);
 
-INSERT INTO `favorites` (`user_id`, `book_id`) VALUES
-(1, 'afcIMuetDuzj'),
-(2, 'afcIMuetDuzj'),
-(3, 'afcIMuetDuzj'),
-(4, 'afcIMuetDuzj'),
-(4, 'pDYIwtdahwkp'),
-(5, 'pDYIwtdahwkp'),
-(6, 'pDYIwtdahwkp'),
-(3, '9UizZw491wye'),
-(1, 'aBcDeFgHiJkL'),
-(4, 'aBcDeFgHiJkL'),
-(5, 'aBcDeFgHiJkL'),
-(7, 'aBcDeFgHiJkL'),
-(8, 'aBcDeFgHiJkL'),
-(10, 'aBcDeFgHiJkL'),
-(2, 'C4hD3jZ8rK6e'),
-(4, 'C4hD3jZ8rK6e'),
-(5, 'C4hD3jZ8rK6e'),
-(6, 'C4hD3jZ8rK6e'),
-(9, 'C4hD3jZ8rK6e'),
-(1, 'Hh5r4Kj9Tb8v'),
-(2, 'Hh5r4Kj9Tb8v'),
-(3, 'Hh5r4Kj9Tb8v'),
-(4, 'Hh5r4Kj9Tb8v'),
-(5, 'Hh5r4Kj9Tb8v'),
-(6, 'Hh5r4Kj9Tb8v'),
-(7, 'dJ4fLnQ2ZcR3'),
-(8, 'dJ4fLnQ2ZcR3'),
-(9, 'dJ4fLnQ2ZcR3'),
-(10, 'dJ4fLnQ2ZcR3'),
-(3, 'ln5NiMJq02V7');
-
-INSERT INTO `bookmarks` (`user_id`, `book_id`, `chapter_number`, `page_number`, `note`) VALUES
-(1, 'afcIMuetDuzj', 1, 1, 'もう一度読み直す'),
-(3, 'afcIMuetDuzj', 3, 3, 'このページのフレーズが好き'),
-(4, 'afcIMuetDuzj', 6, 4, 'この感動を誰かに伝える'),
-(4, 'aBcDeFgHiJkL', 1, 1, 'わかりやすい解説だった'),
-(3, 'aBcDeFgHiJkL', 1, 1, 'よいね'),
-(1, 'aBcDeFgHiJkL', 1, 1, 'ドラゴン謎過ぎる'),
-(7, 'aBcDeFgHiJkL', 1, 1, 'かっこいい'),
-(8, 'aBcDeFgHiJkL', 1, 1, '神秘的'),
-(9, 'aBcDeFgHiJkL', 1, 1, '現代に存在したらどうなっていた'),
-(10, 'aBcDeFgHiJkL', 1, 1, '架空の生き物だがかっこいい'),
-(1, 'Hh5r4Kj9Tb8v', 1, 1, '春の訪れとともに'),
-(2, 'Hh5r4Kj9Tb8v', 2, 1, 'インスピレーションの源'),
-(3, 'Hh5r4Kj9Tb8v', 3, 1, '出会いは運命？'),
-(4, 'Hh5r4Kj9Tb8v', 4, 1, '音楽か、恋か'),
-(5, 'Hh5r4Kj9Tb8v', 5, 1, 'ハヤトの描く世界'),
-(6, 'Hh5r4Kj9Tb8v', 6, 1, 'ツルの舞う夜'),
-(7, 'Hh5r4Kj9Tb8v', 7, 1, '衝突と迷い'),
-(8, 'Hh5r4Kj9Tb8v', 8, 1, 'ツルが導く答え'),
-(9, 'Hh5r4Kj9Tb8v', 9, 1, '愛と芸術の融合'),
-(10, 'Hh5r4Kj9Tb8v', 10, 1, '旋律は続く'),
-(10, 'dJ4fLnQ2ZcR3', 1, 1, '画家の謎の失踪'),
-(9, 'dJ4fLnQ2ZcR3', 2, 1, '手がかりは絵の中に？'),
-(8, 'dJ4fLnQ2ZcR3', 3, 1, '探偵、動き出す'),
-(7, 'dJ4fLnQ2ZcR3', 4, 1, 'ヤギの行動がカギ？'),
-(6, 'dJ4fLnQ2ZcR3', 5, 1, '隠されたメッセージ'),
-(5, 'dJ4fLnQ2ZcR3', 6, 1, '山小屋の秘密'),
-(4, 'dJ4fLnQ2ZcR3', 7, 1, 'ヤギの導く先に…'),
-(3, 'dJ4fLnQ2ZcR3', 8, 1, '衝撃の発見！'),
-(2, 'dJ4fLnQ2ZcR3', 9, 1, '真実へのラストスパート'),
-(1, 'dJ4fLnQ2ZcR3', 10, 1, '最後の一筆'),
-(6, 'C4hD3jZ8rK6e', 1, 1, '華やかな幕開け'),
-(7, 'C4hD3jZ8rK6e', 2, 1, 'フラミンゴの羽の謎'),
-(10, 'C4hD3jZ8rK6e', 3, 1, '刑事ジェイク登場'),
-(3, 'C4hD3jZ8rK6e', 4, 1, 'セレブたちの仮面'),
-(2, 'C4hD3jZ8rK6e', 5, 1, '証言の食い違い'),
-(1, 'C4hD3jZ8rK6e', 6, 1, 'フラミンゴが見ていた？'),
-(4, 'C4hD3jZ8rK6e', 7, 1, '隠されたメッセージ'),
-(5, 'C4hD3jZ8rK6e', 8, 1, '疑惑のリゾートオーナー'),
-(9, 'C4hD3jZ8rK6e', 9, 1, '決定的な証拠'),
-(8, 'bU4W2hM7x9D5', 3, 1, '迫られた選択'),
-(1, 'bU4W2hM7x9D5', 4, 1, '新たな発見'),
-(4, 'bU4W2hM7x9D5', 5, 1, '隠されたメッセージ'),
-(5, 'bU4W2hM7x9D5', 6, 1, '絶体絶命'),
-(9, 'bU4W2hM7x9D5', 7, 1, '銀河の旅');
+LOAD DATA INFILE '/docker-entrypoint-initdb.d/book_favorites.csv'
+INTO TABLE favorites
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+(`user_id`, `book_id`);
 
 INSERT INTO `book_chapters` (`book_id`, `chapter_number`, `title`) VALUES
 ('afcIMuetDuzj', 1, 'プロローグ'),
@@ -394,9 +273,192 @@ INSERT INTO `book_chapters` (`book_id`, `chapter_number`, `title`) VALUES
 ('bU4W2hM7x9D5', 6, '最後の決断'),
 ('bU4W2hM7x9D5', 7, '帰還と新たな旅立ち');
 
-LOAD DATA INFILE '/docker-entrypoint-initdb.d/book_content_pages.csv'
-INTO TABLE book_content_pages
+LOAD DATA INFILE '/docker-entrypoint-initdb.d/book_chapter_page_contents.csv'
+INTO TABLE book_chapter_page_contents
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 (`book_id`, `chapter_number`, `page_number`, `content`);
+
+-- ブックマーク用のサブクエリでpage_content_idを取得してINSERT
+INSERT INTO `bookmarks` (`user_id`, `page_content_id`, `note`)
+SELECT 1, pc.id, 'もう一度読み直す' FROM book_chapter_page_contents pc WHERE pc.book_id = 'afcIMuetDuzj' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 3, pc.id, 'このページのフレーズが好き' FROM book_chapter_page_contents pc WHERE pc.book_id = 'afcIMuetDuzj' AND pc.chapter_number = 3 AND pc.page_number = 3
+UNION ALL SELECT 4, pc.id, 'この感動を誰かに伝える' FROM book_chapter_page_contents pc WHERE pc.book_id = 'afcIMuetDuzj' AND pc.chapter_number = 6 AND pc.page_number = 4
+UNION ALL SELECT 4, pc.id, 'わかりやすい解説だった' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 3, pc.id, 'よいね' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 1, pc.id, 'ドラゴン謎過ぎる' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 7, pc.id, 'かっこいい' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 8, pc.id, '神秘的' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 9, pc.id, '現代に存在したらどうなっていた' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 10, pc.id, '架空の生き物だがかっこいい' FROM book_chapter_page_contents pc WHERE pc.book_id = 'aBcDeFgHiJkL' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 1, pc.id, '春の訪れとともに' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 2, pc.id, 'インスピレーションの源' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 2 AND pc.page_number = 1
+UNION ALL SELECT 3, pc.id, '出会いは運命？' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 3 AND pc.page_number = 1
+UNION ALL SELECT 4, pc.id, '音楽か、恋か' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 4 AND pc.page_number = 1
+UNION ALL SELECT 5, pc.id, 'ハヤトの描く世界' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 5 AND pc.page_number = 1
+UNION ALL SELECT 6, pc.id, 'ツルの舞う夜' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 6 AND pc.page_number = 1
+UNION ALL SELECT 7, pc.id, '衝突と迷い' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 7 AND pc.page_number = 1
+UNION ALL SELECT 8, pc.id, 'ツルが導く答え' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 8 AND pc.page_number = 1
+UNION ALL SELECT 9, pc.id, '愛と芸術の融合' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 9 AND pc.page_number = 1
+UNION ALL SELECT 10, pc.id, '旋律は続く' FROM book_chapter_page_contents pc WHERE pc.book_id = 'Hh5r4Kj9Tb8v' AND pc.chapter_number = 10 AND pc.page_number = 1
+UNION ALL SELECT 10, pc.id, '画家の謎の失踪' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 9, pc.id, '手がかりは絵の中に？' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 2 AND pc.page_number = 1
+UNION ALL SELECT 8, pc.id, '探偵、動き出す' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 3 AND pc.page_number = 1
+UNION ALL SELECT 7, pc.id, 'ヤギの行動がカギ？' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 4 AND pc.page_number = 1
+UNION ALL SELECT 6, pc.id, '隠されたメッセージ' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 5 AND pc.page_number = 1
+UNION ALL SELECT 5, pc.id, '山小屋の秘密' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 6 AND pc.page_number = 1
+UNION ALL SELECT 4, pc.id, 'ヤギの導く先に…' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 7 AND pc.page_number = 1
+UNION ALL SELECT 3, pc.id, '衝撃の発見！' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 8 AND pc.page_number = 1
+UNION ALL SELECT 2, pc.id, '真実へのラストスパート' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 9 AND pc.page_number = 1
+UNION ALL SELECT 1, pc.id, '最後の一筆' FROM book_chapter_page_contents pc WHERE pc.book_id = 'dJ4fLnQ2ZcR3' AND pc.chapter_number = 10 AND pc.page_number = 1
+UNION ALL SELECT 6, pc.id, '華やかな幕開け' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 1 AND pc.page_number = 1
+UNION ALL SELECT 7, pc.id, 'フラミンゴの羽の謎' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 2 AND pc.page_number = 1
+UNION ALL SELECT 10, pc.id, '刑事ジェイク登場' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 3 AND pc.page_number = 1
+UNION ALL SELECT 3, pc.id, 'セレブたちの仮面' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 4 AND pc.page_number = 1
+UNION ALL SELECT 2, pc.id, '証言の食い違い' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 5 AND pc.page_number = 1
+UNION ALL SELECT 1, pc.id, 'フラミンゴが見ていた？' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 6 AND pc.page_number = 1
+UNION ALL SELECT 4, pc.id, '隠されたメッセージ' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 7 AND pc.page_number = 1
+UNION ALL SELECT 5, pc.id, '疑惑のリゾートオーナー' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 8 AND pc.page_number = 1
+UNION ALL SELECT 9, pc.id, '決定的な証拠' FROM book_chapter_page_contents pc WHERE pc.book_id = 'C4hD3jZ8rK6e' AND pc.chapter_number = 9 AND pc.page_number = 1
+UNION ALL SELECT 8, pc.id, '迫られた選択' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 3 AND pc.page_number = 1
+UNION ALL SELECT 1, pc.id, '新たな発見' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 4 AND pc.page_number = 1
+UNION ALL SELECT 4, pc.id, '隠されたメッセージ' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 5 AND pc.page_number = 1
+UNION ALL SELECT 5, pc.id, '絶体絶命' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 6 AND pc.page_number = 1
+UNION ALL SELECT 9, pc.id, '銀河の旅' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 7 AND pc.page_number = 1;
+
+-- ================================================
+-- パフォーマンス最適化のためのインデックス追加
+-- ================================================
+
+-- 書籍関連の基本インデックス
+CREATE INDEX idx_books_deleted ON books(is_deleted);
+CREATE INDEX idx_books_title ON books(title);
+CREATE INDEX idx_books_authors ON books(authors);
+CREATE INDEX idx_books_isbn ON books(isbn);
+
+-- 書籍の並び替え用インデックス
+CREATE INDEX idx_books_popularity_desc ON books(popularity DESC, is_deleted);
+CREATE INDEX idx_books_publication_date_desc ON books(publication_date DESC, is_deleted);
+CREATE INDEX idx_books_average_rating_desc ON books(average_rating DESC, is_deleted);
+CREATE INDEX idx_books_review_count_desc ON books(review_count DESC, is_deleted);
+
+-- 書籍検索の複合インデックス
+CREATE INDEX idx_books_search_combo ON books(title, authors, is_deleted);
+
+-- ユーザー関連インデックス
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_deleted ON users(is_deleted);
+
+-- レビュー関連インデックス
+CREATE INDEX idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX idx_reviews_book_id ON reviews(book_id);
+CREATE INDEX idx_reviews_book_deleted ON reviews(book_id, is_deleted);
+CREATE INDEX idx_reviews_user_book ON reviews(user_id, book_id);
+CREATE INDEX idx_reviews_rating ON reviews(rating);
+CREATE INDEX idx_reviews_updated_at_desc ON reviews(updated_at DESC);
+CREATE INDEX idx_reviews_created_at_desc ON reviews(created_at DESC);
+
+-- 統計更新クエリ用の最適化インデックス
+CREATE INDEX idx_reviews_stats ON reviews(book_id, is_deleted, rating);
+
+-- お気に入り関連インデックス
+CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX idx_favorites_book_id ON favorites(book_id);
+CREATE INDEX idx_favorites_user_book ON favorites(user_id, book_id);
+CREATE INDEX idx_favorites_user_deleted ON favorites(user_id, is_deleted);
+CREATE INDEX idx_favorites_book_deleted ON favorites(book_id, is_deleted);
+CREATE INDEX idx_favorites_updated_at_desc ON favorites(updated_at DESC);
+CREATE INDEX idx_favorites_created_at_desc ON favorites(created_at DESC);
+
+-- ブックマーク関連インデックス
+CREATE INDEX idx_bookmarks_user_id ON bookmarks(user_id);
+CREATE INDEX idx_bookmarks_page_content_id ON bookmarks(page_content_id);
+CREATE INDEX idx_bookmarks_user_deleted ON bookmarks(user_id, is_deleted);
+CREATE INDEX idx_bookmarks_updated_at_desc ON bookmarks(updated_at DESC);
+CREATE INDEX idx_bookmarks_created_at_desc ON bookmarks(created_at DESC);
+
+-- 書籍とジャンルの関係インデックス
+CREATE INDEX idx_book_genres_book_id ON book_genres(book_id);
+CREATE INDEX idx_book_genres_genre_id ON book_genres(genre_id);
+
+-- ジャンル関連インデックス
+CREATE INDEX idx_genres_name ON genres(name);
+CREATE INDEX idx_genres_deleted ON genres(is_deleted);
+
+-- ユーザーとロールの関係インデックス
+CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
+
+-- ロール関連インデックス
+CREATE INDEX idx_roles_name ON roles(name);
+CREATE INDEX idx_roles_deleted ON roles(is_deleted);
+
+-- 書籍章関連インデックス
+CREATE INDEX idx_book_chapters_book_id ON book_chapters(book_id);
+CREATE INDEX idx_book_chapters_deleted ON book_chapters(is_deleted);
+
+-- 書籍ページコンテンツ関連インデックス
+CREATE INDEX idx_book_chapter_page_contents_book_chapter ON book_chapter_page_contents(book_id, chapter_number);
+CREATE INDEX idx_book_chapter_page_contents_deleted ON book_chapter_page_contents(is_deleted);
+
+-- フルテキスト検索用インデックス（書籍の高度な検索機能用）
+CREATE FULLTEXT INDEX idx_books_fulltext ON books(title, description, authors);
+
+-- 評価点平均
+UPDATE books b
+SET average_rating = (
+    SELECT COALESCE(ROUND(AVG(r.rating), 2), 0.00)
+    FROM reviews r 
+    WHERE r.book_id = b.id AND r.is_deleted = false
+);
+
+-- レビュー数
+UPDATE books b
+SET review_count = (
+    SELECT COUNT(*)
+    FROM reviews r 
+    WHERE r.book_id = b.id AND r.is_deleted = false
+);
+
+-- 人気度（基本的な重み付きスコア: 平均点数 × log(レビュー数 + 1) × 20）
+UPDATE books b
+SET popularity = (
+    CASE 
+        WHEN b.review_count = 0 OR b.average_rating = 0.0 THEN 0.00
+        ELSE ROUND(b.average_rating * LN(b.review_count + 1) * 20, 2)
+    END
+);
+
+-- ================================================
+-- パフォーマンス分析用のコメント
+-- ================================================
+
+/*
+追加されたインデックスの効果:
+
+1. 書籍検索の高速化:
+   - タイトル検索: idx_books_title
+   - 著者検索: idx_books_authors
+   - 複合検索: idx_books_search_combo
+   - フルテキスト検索: idx_books_fulltext
+
+2. ソート性能の向上:
+   - 人気順: idx_books_popularity_desc
+   - 新着順: idx_books_publication_date_desc
+   - 評価順: idx_books_average_rating_desc
+
+3. ユーザー関連クエリの最適化:
+   - マイレビュー取得: idx_reviews_user_id, idx_reviews_updated_at_desc
+   - マイお気に入り取得: idx_favorites_user_id, idx_favorites_updated_at_desc
+   - マイブックマーク取得: idx_bookmarks_user_id, idx_bookmarks_updated_at_desc
+
+4. 統計更新処理の高速化:
+   - 書籍統計更新: idx_reviews_stats
+   - レビュー集計: idx_reviews_book_deleted
+
+5. ジャンル検索の最適化:
+   - ジャンル別書籍検索: idx_book_genres_genre_id, idx_book_genres_book_id
+
+これらのインデックスにより、大量データでも高速なクエリ実行が可能になります。
+*/

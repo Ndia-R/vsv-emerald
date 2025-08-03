@@ -1,0 +1,132 @@
+  erDiagram
+      %% ユーザー認証関連
+      users {
+          BIGINT id PK "AUTO_INCREMENT"
+          VARCHAR_255 email UK "NOT NULL, UNIQUE"
+          VARCHAR_255 password "NOT NULL"
+          VARCHAR_255 name "NOT NULL"
+          VARCHAR_255 avatar_path "NULL"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      roles {
+          BIGINT id PK "AUTO_INCREMENT"
+          VARCHAR_255 name "NOT NULL (ROLE_ADMIN, ROLE_USER)"
+          VARCHAR_255 description "NOT NULL"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      user_roles {
+          BIGINT user_id PK, FK
+          BIGINT role_id PK, FK
+      }
+
+      %% 書籍関連
+      books {
+          VARCHAR_255 id PK "NOT NULL"
+          VARCHAR_255 title "NOT NULL"
+          TEXT description "NOT NULL"
+          VARCHAR_255 authors "NOT NULL"
+          VARCHAR_255 publisher "NOT NULL"
+          DATE publication_date "NOT NULL"
+          BIGINT price "NOT NULL, DEFAULT 0"
+          BIGINT page_count "NOT NULL, DEFAULT 0"
+          VARCHAR_255 isbn "NOT NULL"
+          VARCHAR_255 image_path "NULL"
+          DECIMAL_3_2 average_rating "NOT NULL, DEFAULT 0.00"
+          BIGINT review_count "NOT NULL, DEFAULT 0"
+          DECIMAL_8_2 popularity "NOT NULL, DEFAULT 0.00"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      genres {
+          BIGINT id PK "AUTO_INCREMENT"
+          VARCHAR_255 name "NOT NULL"
+          VARCHAR_255 description "NOT NULL"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      book_genres {
+          VARCHAR_255 book_id PK, FK
+          BIGINT genre_id PK, FK
+      }
+
+      %% 書籍コンテンツ構造
+      book_chapters {
+          VARCHAR_255 book_id PK, FK
+          BIGINT chapter_number PK
+          VARCHAR_255 title "NOT NULL"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      book_chapter_page_contents {
+          BIGINT id PK "AUTO_INCREMENT"
+          VARCHAR_255 book_id FK
+          BIGINT chapter_number FK
+          BIGINT page_number "UNIQUE with book_id, chapter_number"
+          TEXT content "NOT NULL"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      %% ユーザーアクション関連
+      reviews {
+          BIGINT id PK "AUTO_INCREMENT"
+          BIGINT user_id FK
+          VARCHAR_255 book_id FK
+          VARCHAR_1000 comment "NOT NULL"
+          DECIMAL_2_1 rating "NOT NULL, CHECK 0-5"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      favorites {
+          BIGINT id PK "AUTO_INCREMENT"
+          BIGINT user_id FK
+          VARCHAR_255 book_id FK
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      bookmarks {
+          BIGINT id PK "AUTO_INCREMENT"
+          BIGINT user_id FK
+          BIGINT page_content_id FK
+          VARCHAR_1000 note "NOT NULL"
+          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
+          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
+          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
+      }
+
+      %% リレーションシップ定義
+      users ||--o{ user_roles : "1:N"
+      roles ||--o{ user_roles : "1:N"
+
+      books ||--o{ book_genres : "1:N"
+      genres ||--o{ book_genres : "1:N"
+
+      books ||--o{ book_chapters : "1:N"
+      book_chapters ||--o{ book_chapter_page_contents : "1:N"
+
+      users ||--o{ reviews : "1:N"
+      books ||--o{ reviews : "1:N"
+
+      users ||--o{ favorites : "1:N"
+      books ||--o{ favorites : "1:N"
+
+      users ||--o{ bookmarks : "1:N"
+      book_chapter_page_contents ||--o{ bookmarks : "1:N"
+  
