@@ -1,132 +1,128 @@
-  erDiagram
-      %% ユーザー認証関連
-      users {
-          BIGINT id PK "AUTO_INCREMENT"
-          VARCHAR_255 email UK "NOT NULL, UNIQUE"
-          VARCHAR_255 password "NOT NULL"
-          VARCHAR_255 name "NOT NULL"
-          VARCHAR_255 avatar_path "NULL"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+erDiagram
+    users {
+        BIGINT id PK
+        VARCHAR_255 email UK
+        VARCHAR_255 password
+        VARCHAR_255 name
+        VARCHAR_255 avatar_path
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      roles {
-          BIGINT id PK "AUTO_INCREMENT"
-          VARCHAR_255 name "NOT NULL (ROLE_ADMIN, ROLE_USER)"
-          VARCHAR_255 description "NOT NULL"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    roles {
+        BIGINT id PK
+        VARCHAR_255 name
+        VARCHAR_255 description
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      user_roles {
-          BIGINT user_id PK, FK
-          BIGINT role_id PK, FK
-      }
+    user_roles {
+        BIGINT user_id PK,FK
+        BIGINT role_id PK,FK
+    }
 
-      %% 書籍関連
-      books {
-          VARCHAR_255 id PK "NOT NULL"
-          VARCHAR_255 title "NOT NULL"
-          TEXT description "NOT NULL"
-          VARCHAR_255 authors "NOT NULL"
-          VARCHAR_255 publisher "NOT NULL"
-          DATE publication_date "NOT NULL"
-          BIGINT price "NOT NULL, DEFAULT 0"
-          BIGINT page_count "NOT NULL, DEFAULT 0"
-          VARCHAR_255 isbn "NOT NULL"
-          VARCHAR_255 image_path "NULL"
-          DECIMAL_3_2 average_rating "NOT NULL, DEFAULT 0.00"
-          BIGINT review_count "NOT NULL, DEFAULT 0"
-          DECIMAL_8_2 popularity "NOT NULL, DEFAULT 0.00"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    books {
+        VARCHAR_255 id PK
+        VARCHAR_255 title
+        TEXT description
+        VARCHAR_255 authors
+        VARCHAR_255 publisher
+        DATE publication_date
+        BIGINT price
+        BIGINT page_count
+        VARCHAR_255 isbn
+        VARCHAR_255 image_path
+        DECIMAL_3_2 average_rating
+        BIGINT review_count
+        DECIMAL_8_2 popularity
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      genres {
-          BIGINT id PK "AUTO_INCREMENT"
-          VARCHAR_255 name "NOT NULL"
-          VARCHAR_255 description "NOT NULL"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    genres {
+        BIGINT id PK
+        VARCHAR_255 name
+        VARCHAR_255 description
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      book_genres {
-          VARCHAR_255 book_id PK, FK
-          BIGINT genre_id PK, FK
-      }
+    book_genres {
+        VARCHAR_255 book_id PK,FK
+        BIGINT genre_id PK,FK
+    }
 
-      %% 書籍コンテンツ構造
-      book_chapters {
-          VARCHAR_255 book_id PK, FK
-          BIGINT chapter_number PK
-          VARCHAR_255 title "NOT NULL"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    book_chapters {
+        VARCHAR_255 book_id PK,FK
+        BIGINT chapter_number PK
+        VARCHAR_255 title
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      book_chapter_page_contents {
-          BIGINT id PK "AUTO_INCREMENT"
-          VARCHAR_255 book_id FK
-          BIGINT chapter_number FK
-          BIGINT page_number "UNIQUE with book_id, chapter_number"
-          TEXT content "NOT NULL"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    book_chapter_page_contents {
+        BIGINT id PK
+        VARCHAR_255 book_id FK
+        BIGINT chapter_number FK
+        BIGINT page_number
+        TEXT content
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      %% ユーザーアクション関連
-      reviews {
-          BIGINT id PK "AUTO_INCREMENT"
-          BIGINT user_id FK
-          VARCHAR_255 book_id FK
-          VARCHAR_1000 comment "NOT NULL"
-          DECIMAL_2_1 rating "NOT NULL, CHECK 0-5"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    reviews {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR_255 book_id FK
+        VARCHAR_1000 comment
+        DECIMAL_2_1 rating
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      favorites {
-          BIGINT id PK "AUTO_INCREMENT"
-          BIGINT user_id FK
-          VARCHAR_255 book_id FK
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    favorites {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR_255 book_id FK
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      bookmarks {
-          BIGINT id PK "AUTO_INCREMENT"
-          BIGINT user_id FK
-          BIGINT page_content_id FK
-          VARCHAR_1000 note "NOT NULL"
-          TIMESTAMP created_at "DEFAULT CURRENT_TIMESTAMP"
-          TIMESTAMP updated_at "DEFAULT CURRENT_TIMESTAMP ON UPDATE"
-          BOOLEAN is_deleted "NOT NULL, DEFAULT FALSE"
-      }
+    bookmarks {
+        BIGINT id PK
+        BIGINT user_id FK
+        BIGINT page_content_id FK
+        VARCHAR_1000 note
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        BOOLEAN is_deleted
+    }
 
-      %% リレーションシップ定義
-      users ||--o{ user_roles : "1:N"
-      roles ||--o{ user_roles : "1:N"
+    %% リレーションシップ定義
+    users ||--o{ user_roles : "user_id"
+    roles ||--o{ user_roles : "role_id"
 
-      books ||--o{ book_genres : "1:N"
-      genres ||--o{ book_genres : "1:N"
+    books ||--o{ book_genres : "book_id"
+    genres ||--o{ book_genres : "genre_id"
 
-      books ||--o{ book_chapters : "1:N"
-      book_chapters ||--o{ book_chapter_page_contents : "1:N"
+    books ||--o{ book_chapters : "book_id"
+    book_chapters ||--o{ book_chapter_page_contents : "book_id,chapter_number"
 
-      users ||--o{ reviews : "1:N"
-      books ||--o{ reviews : "1:N"
+    users ||--o{ reviews : "user_id"
+    books ||--o{ reviews : "book_id"
 
-      users ||--o{ favorites : "1:N"
-      books ||--o{ favorites : "1:N"
+    users ||--o{ favorites : "user_id"
+    books ||--o{ favorites : "book_id"
 
-      users ||--o{ bookmarks : "1:N"
-      book_chapter_page_contents ||--o{ bookmarks : "1:N"
+    users ||--o{ bookmarks : "user_id"
+    book_chapter_page_contents ||--o{ bookmarks : "page_content_id"
   

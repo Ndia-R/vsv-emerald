@@ -1,21 +1,28 @@
 services:
-  web:
-    build:
-      context: ./web
-    ports:
-      - 443:443
-      - 80:80
+  my-books-db:
+    image: mysql:8.0
+    expose:
+      - 3306
     environment:
       TZ: Asia/Tokyo
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     volumes:
-      - ./web/nginx.conf:/etc/nginx/nginx.conf
-      - ./web/default.conf:/etc/nginx/conf.d/default.conf
-      - ./web/certs:/etc/nginx/ssl
-      - ./web/images:/usr/share/nginx/html/images
-    depends_on:
-      - my-books-api-v0
-      - my-books-api-v1
-      - my-books-api-v2
+      - ./db/my-books-db/book_chapter_page_contents.csv:/docker-entrypoint-initdb.d/book_chapter_page_contents.csv
+      - ./db/my-books-db/book_favorites.csv:/docker-entrypoint-initdb.d/book_favorites.csv
+      - ./db/my-books-db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
+      - ./db/my-books-db/book_reviews.csv:/docker-entrypoint-initdb.d/book_reviews.csv
+      - ./db/my-books-db/books.csv:/docker-entrypoint-initdb.d/books.csv
+      - ./db/my-books-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/my-books-db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - my-books-db-data:/var/lib/mysql
+    command: ["mysqld", "--secure-file-priv=/docker-entrypoint-initdb.d"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   my-books-api-v0:
     build:
@@ -35,10 +42,17 @@ services:
       APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V0}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V0}
       SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V0}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    entrypoint: ["/usr/local/bin/wait-for-it.sh", "my-books-db:3306", "--", "java", "-jar", "my-books.jar"]
     depends_on:
       my-books-db:
         condition: service_healthy
-
+  
   my-books-api-v1:
     build:
       context: ./api/my-books-api/v1
@@ -57,10 +71,17 @@ services:
       APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V1}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V1}
       SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V1}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    entrypoint: ["/usr/local/bin/wait-for-it.sh", "my-books-db:3306", "--", "java", "-jar", "my-books.jar"]
     depends_on:
-      my-books-db:
+      my-books-api-v0:
         condition: service_healthy
-  
+
   my-books-api-v2:
     build:
       context: ./api/my-books-api/v2
@@ -79,34 +100,33 @@ services:
       APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V2}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V2}
       SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V2}
-    depends_on:
-      my-books-db:
-        condition: service_healthy
-
-  my-books-db:
-    image: mysql:8.0
-    expose:
-      - 3306
-    environment:
-      TZ: Asia/Tokyo
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-    volumes:
-      - ./db/my-books-db/book_chapter_page_contents.csv:/docker-entrypoint-initdb.d/book_chapter_page_contents.csv
-      - ./db/my-books-db/book_favorites.csv:/docker-entrypoint-initdb.d/book_favorites.csv
-      - ./db/my-books-db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
-      - ./db/my-books-db/book_reviews.csv:/docker-entrypoint-initdb.d/book_reviews.csv
-      - ./db/my-books-db/books.csv:/docker-entrypoint-initdb.d/books.csv
-      - ./db/my-books-db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./db/my-books-db/my.cnf:/etc/mysql/conf.d/my.cnf
-      - my-books-db-data:/var/lib/mysql
-    command: --secure-file-priv=/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+    entrypoint: ["/usr/local/bin/wait-for-it.sh", "my-books-db:3306", "--", "java", "-jar", "my-books.jar"]
+    depends_on:
+      my-books-api-v1:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+    ports:
+      - 443:443
+      - 80:80
+    environment:
+      TZ: Asia/Tokyo
+    volumes:
+      - ./web/nginx.conf:/etc/nginx/nginx.conf
+      - ./web/default.conf:/etc/nginx/conf.d/default.conf
+      - ./web/certs:/etc/nginx/ssl
+      - ./web/images:/usr/share/nginx/html/images
+    entrypoint: ["/usr/local/bin/wait-for-it.sh", "my-books-api-v2:8080", "--", "nginx", "-g", "daemon off;"]
+    depends_on:
+      - my-books-api-v2
 
 volumes:
   my-books-db-data:
