@@ -42,6 +42,7 @@ services:
       APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V0}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V0}
       SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V0}
+      LOGGING_LEVEL: ${LOGGING_LEVEL_V0}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -71,6 +72,7 @@ services:
       APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V1}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V1}
       SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V1}
+      LOGGING_LEVEL: ${LOGGING_LEVEL_V1}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -100,6 +102,7 @@ services:
       APP_SWAGGER_SERVER_DESCRIPTION: ${SWAGGER_SERVER_DESCRIPTION_V2}
       SPRINGDOC_SWAGGER_UI_CONFIG_URL: ${SWAGGER_UI_CONFIG_URL_V2}
       SPRINGDOC_SWAGGER_UI_URL: ${SWAGGER_UI_URL_V2}
+      LOGGING_LEVEL: ${LOGGING_LEVEL_V2}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
