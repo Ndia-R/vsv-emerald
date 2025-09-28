@@ -1,19 +1,20 @@
 # ベースイメージとして軽量なJavaランタイムを指定
-FROM openjdk:17-alpine
+FROM eclipse-temurin:17-jre-alpine AS production
 
-RUN apk update && \
-    apk add --no-cache curl sudo bash && \
-    rm -rf /var/cache/apk/*
-    
-# アプリケーションの作業ディレクトリを設定
-WORKDIR /workspace
+# healthcheck用にcurlをインストール
+RUN apk add --update curl
 
-# ビルドしたSpring BootのJARファイルをコンテナにコピー
-COPY ./my-books.jar my-books.jar
+# セキュリティ: 非rootユーザーで実行
+RUN addgroup -S appuser && adduser -S -G appuser appuser
 
-# 他のコンテナの起動を待つためのスクリプトをコピー
-COPY ./wait-for-it.sh /usr/local/bin/wait-for-it.sh
-RUN chmod +x /usr/local/bin/wait-for-it.sh
+WORKDIR /app
 
-# アプリケーションの実行
-# ENTRYPOINT ["java", "-jar", "my-books.jar"]
+# JARファイルをコピー
+COPY ./*.jar app.jar
+
+# 所有権を変更
+RUN chown appuser:appuser /app/app.jar
+
+USER appuser
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

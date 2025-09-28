@@ -15,9 +15,5 @@ COPY ./my-books/dist/ .
 COPY ./convert_images.sh /usr/local/bin/convert_images.sh
 RUN chmod +x /usr/local/bin/convert_images.sh
 
-# 他のコンテナの起動を待つためのスクリプトをコピー
-COPY ./wait-for-it.sh /usr/local/bin/wait-for-it.sh
-RUN chmod +x /usr/local/bin/wait-for-it.sh
-
 # コンテナ起動時に画像を変換
 CMD ["/bin/sh", "-c", "/usr/local/bin/convert_images.sh && nginx -g 'daemon off;'"]
