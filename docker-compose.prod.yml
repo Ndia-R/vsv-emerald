@@ -1,0 +1,138 @@
+services:
+  # DB
+  my-books-db:
+    image: mysql:8.0
+    environment:
+      TZ: Asia/Tokyo
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis
+  redis:
+    image: redis:8.2
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # API
+  my-books-api:
+    image: ${REGISTRY_HOSTNAME}/my-books-api:${API_TAG}
+    environment:
+      TZ: Asia/Tokyo
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      # Identity Provider (IdP) Configuration
+      IDP_ISSUER_URI: ${IDP_ISSUER_URI}
+      # JPA Settings
+      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
+      SPRING_JPA_FORMAT_SQL: ${SPRING_JPA_FORMAT_SQL:-false}
+      # DataSource Pool Settings
+      DATASOURCE_POOL_MAX_SIZE: ${DATASOURCE_POOL_MAX_SIZE:-20}
+      DATASOURCE_POOL_MIN_IDLE: ${DATASOURCE_POOL_MIN_IDLE:-10}
+      DATASOURCE_CONNECTION_TIMEOUT: ${DATASOURCE_CONNECTION_TIMEOUT:-30000}
+      # Error Response Settings
+      SERVER_ERROR_INCLUDE_MESSAGE: ${SERVER_ERROR_INCLUDE_MESSAGE:-never}
+      SERVER_ERROR_INCLUDE_STACKTRACE: ${SERVER_ERROR_INCLUDE_STACKTRACE:-never}
+      # Logging
+      LOGGING_LEVEL: ${LOGGING_LEVEL:-INFO}
+    depends_on:
+      my-books-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # BFF (Backend For Frontend)
+  api-gateway-bff:
+    image: ${REGISTRY_HOSTNAME}/api-gateway-bff:${BFF_TAG}
+    environment:
+      TZ: Asia/Tokyo
+      # Identity Provider (IdP) Configuration
+      IDP_CLIENT_ID: ${IDP_CLIENT_ID}
+      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
+      IDP_ISSUER_URI: ${IDP_ISSUER_URI}
+      # BFF関連のURL（VPS_HOSTNAMEから組み立てる）
+      IDP_REDIRECT_URI: https://${VPS_HOSTNAME}/bff/login/oauth2/code/idp
+      IDP_POST_LOGOUT_REDIRECT_URI: https://${VPS_HOSTNAME}/logout-complete
+      FRONTEND_URL: https://${VPS_HOSTNAME}
+      # Application Configuration
+      SERVICE_01_URL: ${SERVICE_01_URL}
+      SERVICE_01_PATH_PREFIX: ${SERVICE_01_PATH_PREFIX}
+      SERVICE_02_URL: ${SERVICE_02_URL}
+      SERVICE_02_PATH_PREFIX: ${SERVICE_02_PATH_PREFIX}
+      SERVICE_03_URL: ${SERVICE_03_URL}
+      SERVICE_03_PATH_PREFIX: ${SERVICE_03_PATH_PREFIX}
+      SERVICE_04_URL: ${SERVICE_04_URL}
+      SERVICE_04_PATH_PREFIX: ${SERVICE_04_PATH_PREFIX}
+      SERVICE_05_URL: ${SERVICE_05_URL}
+      SERVICE_05_PATH_PREFIX: ${SERVICE_05_PATH_PREFIX}
+      # Logging Settings
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+    depends_on:
+      redis:
+        condition: service_healthy
+      my-books-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # APP
+  my-books-frontend:
+    image: ${REGISTRY_HOSTNAME}/my-books-frontend:${FRONTEND_TAG}
+    environment:
+      TZ: Asia/Tokyo
+    depends_on:
+      api-gateway-bff:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Nginx (通信窓口 / リバースプロキシ)
+  nginx-edge:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      my-books-frontend:
+        condition: service_healthy
+      api-gateway-bff:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  db-data:
