@@ -9,7 +9,8 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - db-data:/var/lib/mysql
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - my-books-db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -32,7 +33,7 @@ services:
     environment:
       TZ: Asia/Tokyo
       # Database Configuration
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${DB_NAME}
+      SPRING_DATASOURCE_URL: jdbc:mysql://my-books-db:3306/${DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       # Identity Provider (IdP) Configuration
@@ -135,4 +136,4 @@ services:
       start_period: 10s
 
 volumes:
-  db-data:
+  my-books-db-data:
