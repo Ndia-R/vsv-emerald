@@ -9,6 +9,12 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
+      - ./db/book_chapter_page_contents.csv:/docker-entrypoint-initdb.d/book_chapter_page_contents.csv
+      - ./db/book_favorites.csv:/docker-entrypoint-initdb.d/book_favorites.csv
+      - ./db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
+      - ./db/book_reviews.csv:/docker-entrypoint-initdb.d/book_reviews.csv
+      - ./db/books.csv:/docker-entrypoint-initdb.d/books.csv
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
       - my-books-db-data:/var/lib/mysql
     healthcheck:
@@ -17,6 +23,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    command: --secure-file-priv=/docker-entrypoint-initdb.d
 
   # Redis
   redis:
