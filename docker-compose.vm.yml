@@ -2,6 +2,17 @@ services:
   # DB
   my-books-db:
     image: mysql:8.0
+    env_file:
+      - .env.vm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     environment:
       TZ: Asia/Tokyo
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
@@ -23,20 +34,52 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: --secure-file-priv=/docker-entrypoint-initdb.d
 
   # Redis
   redis:
     image: redis:8.2
+    env_file:
+      - .env.vm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # API
   my-books-api:
     image: ${REGISTRY_HOSTNAME}/my-books-api:${API_TAG}
+    env_file:
+      - .env.vm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     environment:
       TZ: Asia/Tokyo
       # Database Configuration
@@ -66,10 +109,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # BFF (Backend For Frontend)
   api-gateway-bff:
     image: ${REGISTRY_HOSTNAME}/api-gateway-bff:${BFF_TAG}
+    env_file:
+      - .env.vm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     environment:
       TZ: Asia/Tokyo
       # Identity Provider (IdP) Configuration
@@ -99,10 +158,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # APP
   my-books-frontend:
     image: ${REGISTRY_HOSTNAME}/my-books-frontend:${FRONTEND_TAG}
+    env_file:
+      - .env.vm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     environment:
       TZ: Asia/Tokyo
     depends_on:
@@ -114,10 +189,26 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Nginx (通信窓口 / リバースプロキシ)
   nginx-edge:
     image: nginx:alpine
+    env_file:
+      - .env.vm
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
     ports:
       - "80:80"
       - "443:443"
@@ -134,6 +225,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   my-books-db-data:
