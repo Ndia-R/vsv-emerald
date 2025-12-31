@@ -20,7 +20,7 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - ./db:/docker-entrypoint-initdb.d:ro
+      - ./db:/docker-entrypoint-initdb.d
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf:ro
       - my-books-db-data:/var/lib/mysql
     healthcheck:
