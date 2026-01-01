@@ -4,10 +4,10 @@
 
 ## 1. サーバー役割概要
 
-| サーバー | ホスト名                     | 主な役割                                          | 接続方式               |
-| :------- | :--------------------------- | :------------------------------------------------ | :--------------------- |
-| **VPS1** | `vsv-crystal.skygroup.local` | **認証プロバイダー** および **Docker レジストリ** | **インターネット経由** |
-| **VPS2** | `vsv-emerald.skygroup.local` | **Web アプリケーション本体** (実行環境)           | **インターネット経由** |
+| サーバー | ホスト名                     | 主な役割                                                                 | 接続方式               |
+| :------- | :--------------------------- | :----------------------------------------------------------------------- | :--------------------- |
+| **VPS1** | `vsv-crystal.skygroup.local` | **認証プロバイダー**、**Docker レジストリ**、および **静的アセット配信** | **インターネット経由** |
+| **VPS2** | `vsv-emerald.skygroup.local` | **Web アプリケーション本体** (実行環境)                                  | **インターネット経由** |
 
 ## 2. システムコンポーネント関係図
 
@@ -26,6 +26,7 @@ graph LR
         Keycloak(Keycloak)
         Keycloak_DB(DB<br>Keycloak)
         Registry(Registry)
+        Nginx_Assets(Nginx<br>Assets)
     end
 
     subgraph VPS2 [🌐 VPS2<br>vsv-emerald.skygroup.local]
@@ -44,17 +45,25 @@ graph LR
         end
     end
 
-    %% ユーザーアクセス (VPS1へ - 認証・レジストリ)
+    %% ユーザーアクセス (VPS1へ - 認証)
     User -- OIDC認証 --> Nginx_VPS1
     Nginx_VPS1 -- /auth --> Keycloak
-    Developer -. HTTPS (Push/Pull) .-> Nginx_VPS1
-    Nginx_VPS1 -- /v2 --> Registry
 
-    %% ユーザーアクセス (VPS2へ - 2つの経路)
+    %% ユーザーアクセス (VPS1へ - 画像・フォント等)
+    User -- HTTPS (画像・フォント等) --> Nginx_VPS1
+    Nginx_VPS1 -- /assets/** --> Nginx_Assets
+
+    %% ユーザーアクセス (VPS2へ - REST API)
     User -- HTTPS (REST API) --> Nginx_VPS2
     Nginx_VPS2 -- /api/** --> BFF
+
+    %% ユーザーアクセス (VPS2へ - 静的ファイル)
     User -- HTTPS (静的ファイル) --> Nginx_VPS2
     Nginx_VPS2 -- ルーティング --> APP
+
+    %% 開発者アクセス (VPS1へ - レジストリ)
+    Developer -. HTTPS (Push/Pull) .-> Nginx_VPS1
+    Nginx_VPS1 -- /v2 --> Registry
 
     %% 認証フロー (VPS間連携)
     BFF -. OIDC(トークン交換/HTTPS) .-> Nginx_VPS1
@@ -91,6 +100,7 @@ graph LR
         Keycloak(Keycloak)
         Keycloak_DB(DB<br>Keycloak)
         Registry(Registry)
+        Nginx_Assets(Nginx<br>Assets)
     end
 
     subgraph VPS2 [🌐 VPS2<br>vsv-emerald.skygroup.local]
@@ -123,9 +133,9 @@ graph LR
     User -- OIDC認証 --> Nginx_VPS1
     Nginx_VPS1 -- /auth --> Keycloak
 
-    %% 開発者アクセス (VPS1へ - レジストリ)
-    Developer -. HTTPS (Push/Pull) .-> Nginx_VPS1
-    Nginx_VPS1 -- /v2 --> Registry
+    %% ユーザーアクセス (VPS1へ - 画像・フォント等)
+    User -- HTTPS (画像・フォント等) --> Nginx_VPS1
+    Nginx_VPS1 -- /assets/** --> Nginx_Assets
 
     %% ユーザーアクセス (VPS2へ - REST API)
     User -- HTTPS (REST API) --> Nginx_VPS2
@@ -136,6 +146,10 @@ graph LR
     User -- HTTPS (静的ファイル) --> Nginx_VPS2
     Nginx_VPS2 -- /my-books --> APP_Books
     Nginx_VPS2 -- /my-music --> APP_Music
+
+    %% 開発者アクセス (VPS1へ - レジストリ)
+    Developer -. HTTPS (Push/Pull) .-> Nginx_VPS1
+    Nginx_VPS1 -- /v2 --> Registry
 
     %% 認証フロー (VPS間連携)
     BFF -. OIDC(トークン交換/HTTPS) .-> Nginx_VPS1
@@ -171,12 +185,13 @@ graph LR
 
 #### VPS1 (vsv-crystal.skygroup.local)
 
-| プロジェクト名 | 図中の表記 | コンテナ名    | 役割                                                               |
-| -------------- | ---------- | ------------- | ------------------------------------------------------------------ |
-| `vsv-crystal`  | Nginx      | `nginx-edge`  | エッジリバースプロキシ（HTTPS 終端、認証・レジストリルーティング） |
-|                | Keycloak   | `keycloak`    | OIDC 認証プロバイダー                                              |
-|                | DB         | `keycloak-db` | Keycloak 専用データベース                                          |
-|                | Registry   | `registry`    | Docker イメージレジストリ                                          |
+| プロジェクト名 | 図中の表記 | コンテナ名     | 役割                                                               |
+| -------------- | ---------- | -------------- | ------------------------------------------------------------------ |
+| `vsv-crystal`  | Nginx      | `nginx-edge`   | エッジリバースプロキシ（HTTPS 終端、認証・レジストリルーティング） |
+|                | Keycloak   | `keycloak`     | OIDC 認証プロバイダー                                              |
+|                | DB         | `keycloak-db`  | Keycloak 専用データベース                                          |
+|                | Registry   | `registry`     | Docker イメージレジストリ                                          |
+|                | Nginx      | `nginx-assets` | 静的アセット配信（画像、フォント、CSS、JS 等）                     |
 
 #### VPS2 (vsv-emerald.skygroup.local) - シングルアプリケーション構成
 
@@ -197,9 +212,11 @@ graph LR
   - **`nginx-edge`**: **エッジリバースプロキシ**。外部からの HTTPS/HTTP トラフィックを受け付ける**最前線の通信窓口**（ポート 80/443 を公開）。SSL 終端とルーティングを担当し、以下のエンドポイントを提供：
     - `/auth` → Keycloak（OIDC 認証）
     - `/v2` → Registry（Docker イメージの push/pull）
+    - `/assets` → nginx-assets（静的アセット配信）
   - **`keycloak`**: **認証プロバイダー**。OpenID Connect (OIDC) プロトコルを提供。
   - **`keycloak-db`**: **Keycloak 専用のデータベース**。Keycloak が管理するユーザー情報、レルム設定、クライアント定義、セッション情報などを永続化するために利用されます。
   - **`registry`**: **Docker イメージレジストリ**。アプリケーションイメージの保管と配布。nginx-edge 経由でのみアクセス可能（内部ポート 5000）。
+  - **`nginx-assets`**: **静的アセット配信サーバー**。画像ファイル、フォント、CSS、JavaScript などの静的リソースを高速に配信します。nginx-edge からのリクエスト（`/assets/**`）を受け取り、効率的なキャッシュと gzip 圧縮を適用して配信します。内部ポート 80 で稼働し、外部からは nginx-edge 経由でのみアクセス可能です。
 
 ## 4. VPS2: Web アプリケーションサーバー (`vsv-emerald.skygroup.local`)
 
@@ -363,14 +380,14 @@ AuthController.login()
 
 **対応 ID プロバイダー:**
 
-| プロバイダー    | ISSUER_URI 例                                               |
-| --------------- | ----------------------------------------------------------- |
-| **Keycloak**    | `http://auth.localhost:8444/realms/test-user-realm`         |
-| **Auth0**       | `https://your-tenant.auth0.com`                             |
-| **Okta**        | `https://dev-12345678.okta.com/oauth2/default`              |
-| **Azure AD**    | `https://login.microsoftonline.com/{tenant-id}/v2.0`        |
-| **Google**      | `https://accounts.google.com`                               |
-| **AWS Cognito** | `https://cognito-idp.{region}.amazonaws.com/{user-pool-id}` |
+| プロバイダー    | ISSUER_URI 例                                                                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Keycloak**    | `https://vsv-crystal.skygroup.local/auth/realms/sample-realm` (開発環境)<br>`https://vsv-crystal.skygroup.local/auth/realms/production-realm` (本番環境) |
+| **Auth0**       | `https://your-tenant.auth0.com`                                                                                                                          |
+| **Okta**        | `https://dev-12345678.okta.com/oauth2/default`                                                                                                           |
+| **Azure AD**    | `https://login.microsoftonline.com/{tenant-id}/v2.0`                                                                                                     |
+| **Google**      | `https://accounts.google.com`                                                                                                                            |
+| **AWS Cognito** | `https://cognito-idp.{region}.amazonaws.com/{user-pool-id}`                                                                                              |
 
 **利点:**
 

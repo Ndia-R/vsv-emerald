@@ -280,12 +280,11 @@ docker compose -f docker-compose.prod.yml up -d --no-deps my-books-frontend
 
 ### OAuth2/OIDC 設定
 
-| 変数名              | 説明                            | 設定例                                                      |
-| ------------------- | ------------------------------- | ----------------------------------------------------------- |
-| `KEYCLOAK_REALM`    | Keycloak レルム名               | `test-user-realm`                                           |
-| `IDP_CLIENT_ID`     | OAuth2 クライアント ID          | `my-books-client`                                           |
-| `IDP_CLIENT_SECRET` | OAuth2 クライアントシークレット | `your-client-secret`                                        |
-| `IDP_ISSUER_URI`    | Keycloak の issuer URI          | `https://vsv-crystal.skygroup.local/auth/realms/test-realm` |
+| 変数名              | 説明                            | 設定例                                                        |
+| ------------------- | ------------------------------- | ------------------------------------------------------------- |
+| `IDP_CLIENT_ID`     | OAuth2 クライアント ID          | `api-gateway-bff-client`                                      |
+| `IDP_CLIENT_SECRET` | OAuth2 クライアントシークレット | `your-client-secret`                                          |
+| `IDP_ISSUER_URI`    | Keycloak の issuer URI          | `https://vsv-crystal.skygroup.local/auth/realms/sample-realm` |
 
 ### バックエンドサービス設定
 
@@ -298,26 +297,26 @@ docker compose -f docker-compose.prod.yml up -d --no-deps my-books-frontend
 
 ### データベース詳細設定（オプション）
 
-| 変数名                        | 説明                              | デフォルト値 |
-| ----------------------------- | --------------------------------- | ------------ |
-| `SPRING_JPA_SHOW_SQL`         | SQL クエリをログに出力            | `false`      |
-| `SPRING_JPA_FORMAT_SQL`       | SQL クエリを整形して出力          | `false`      |
-| `DATASOURCE_POOL_MAX_SIZE`    | DB コネクションプール最大サイズ   | `20`         |
-| `DATASOURCE_POOL_MIN_IDLE`    | DB コネクションプール最小アイドル | `10`         |
-| `DATASOURCE_CONNECTION_TIMEOUT` | DB 接続タイムアウト（ミリ秒）    | `30000`      |
+| 変数名                          | 説明                              | デフォルト値 |
+| ------------------------------- | --------------------------------- | ------------ |
+| `SPRING_JPA_SHOW_SQL`           | SQL クエリをログに出力            | `false`      |
+| `SPRING_JPA_FORMAT_SQL`         | SQL クエリを整形して出力          | `false`      |
+| `DATASOURCE_POOL_MAX_SIZE`      | DB コネクションプール最大サイズ   | `20`         |
+| `DATASOURCE_POOL_MIN_IDLE`      | DB コネクションプール最小アイドル | `10`         |
+| `DATASOURCE_CONNECTION_TIMEOUT` | DB 接続タイムアウト（ミリ秒）     | `30000`      |
 
 ### エラーレスポンス設定（オプション）
 
-| 変数名                          | 説明                          | デフォルト値 |
-| ------------------------------- | ----------------------------- | ------------ |
-| `SERVER_ERROR_INCLUDE_MESSAGE`  | エラーレスポンスにメッセージ含める | `never`      |
+| 変数名                            | 説明                                     | デフォルト値 |
+| --------------------------------- | ---------------------------------------- | ------------ |
+| `SERVER_ERROR_INCLUDE_MESSAGE`    | エラーレスポンスにメッセージ含める       | `never`      |
 | `SERVER_ERROR_INCLUDE_STACKTRACE` | エラーレスポンスにスタックトレース含める | `never`      |
 
 ### ログ設定
 
-| 変数名      | 説明       | 設定値                          |
-| ----------- | ---------- | ------------------------------- |
-| `LOG_LEVEL` | ログレベル | `INFO`（本番）/ `DEBUG`（開発） |
+| 変数名          | 説明             | 設定値                          |
+| --------------- | ---------------- | ------------------------------- |
+| `LOG_LEVEL`     | ログレベル       | `INFO`（本番）/ `DEBUG`（開発） |
 | `LOGGING_LEVEL` | API のログレベル | `INFO`（本番）/ `DEBUG`（開発） |
 
 ## プロジェクト構成
@@ -358,17 +357,103 @@ vsv-emerald/
         └── vsv-emerald.skygroup.local-key.pem # VM環境SSL秘密鍵（mkcert）
 ```
 
+## Docker Compose 設定規約
+
+### サービスプロパティの並び順
+
+このプロジェクトでは、Docker 公式サンプル及び一般的なベストプラクティスに基づき、以下の順序でサービスプロパティを記述しています。
+この順序を統一することで、可読性とメンテナンス性を向上させています。
+
+1. **image** / **build** - コンテナの元となるイメージまたはビルド設定
+2. **container_name** - コンテナ名（オプション）
+3. **env_file** - 環境変数ファイルの参照
+4. **restart** - 再起動ポリシー（`unless-stopped`、`always`など）
+5. **environment** - 環境変数の定義
+6. **volumes** - ボリュームマウントの設定
+7. **ports** - ホストとコンテナ間のポートマッピング（外部公開用）
+8. **expose** - コンテナ間通信用のポート公開（内部のみ）
+9. **networks** - ネットワーク設定
+10. **depends_on** - サービス依存関係とヘルスチェック条件
+11. **command** - コマンドのオーバーライド
+12. **healthcheck** - ヘルスチェック設定
+13. **logging** - ログドライバーとオプション
+14. **deploy** - リソース制限などのデプロイ設定
+15. **secrets** - Docker Swarm 用シークレット（オプション）
+
+#### 設定例
+
+```yaml
+services:
+  my-books-db:
+    image: mysql:8.0 # 1. イメージ
+    env_file: # 3. 環境変数ファイル
+      - .env.vm
+    restart: unless-stopped # 4. 再起動ポリシー
+    environment: # 5. 環境変数
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes: # 6. ボリューム
+      - my-books-db-data:/var/lib/mysql
+    command: --secure-file-priv=/data # 11. コマンド
+    healthcheck: # 12. ヘルスチェック
+      test: ["CMD", "mysqladmin", "ping"]
+      interval: 10s
+    logging: # 13. ログ設定
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    deploy: # 14. デプロイ設定
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+```
+
+#### 参考資料
+
+この並び順は以下のリソースを参考にしています：
+
+- [Docker 公式 Compose ファイルリファレンス](https://docs.docker.com/reference/compose-file/services/)
+- [Docker 公式サンプル集（awesome-compose）](https://github.com/docker/awesome-compose)
+- [Compose 仕様（compose-spec）](https://github.com/compose-spec/compose-spec/blob/main/spec.md)
+
+### ログ設定の統一
+
+全てのサービスで以下のログ設定を統一しています：
+
+```yaml
+logging:
+  driver: "json-file"
+  options:
+    max-size: "10m" # ログファイル1つあたり最大10MB
+    max-file: "3" # ローテーション保持数3世代（合計最大30MB）
+```
+
+### リソース制限設定
+
+各サービスに適切な CPU とメモリのリソース制限を設定しています：
+
+| サービス          | CPU Limit | Memory Limit | 用途                 |
+| ----------------- | --------- | ------------ | -------------------- |
+| my-books-db       | 1.0       | 1G           | MySQL データベース   |
+| redis             | 0.5       | 512M         | セッション管理       |
+| my-books-api      | 1.0       | 1G           | Spring Boot API      |
+| api-gateway-bff   | 1.0       | 1G           | Spring Boot BFF      |
+| my-books-frontend | 0.5       | 512M         | React フロントエンド |
+| nginx-edge        | 0.5       | 256M         | リバースプロキシ     |
+
+本番環境や VM 環境の実際の負荷に応じて、これらの値は調整可能です。
+
 ## 開発環境
 
 ### 環境の種類
 
 このプロジェクトは 3 つの環境をサポートしています：
 
-| 環境         | Compose ファイル           | ホスト名                     | 用途                                     |
-| ------------ | -------------------------- | ---------------------------- | ---------------------------------------- |
-| **本番環境** | `docker-compose.prod.yml`  | `vsv-emerald.skygroup.local` | 本番VPSサーバー                          |
-| **VM環境**   | `docker-compose.vm.yml`    | `vsv-emerald.skygroup.local` | VirtualBox仮想マシン（本番環境テスト用） |
-| **開発環境** | `docker-compose.dev.yml`   | `localhost`                  | ローカル開発（Nginxのみ）                |
+| 環境         | Compose ファイル          | ホスト名                     | 用途                                      |
+| ------------ | ------------------------- | ---------------------------- | ----------------------------------------- |
+| **本番環境** | `docker-compose.prod.yml` | `vsv-emerald.skygroup.local` | 本番 VPS サーバー                         |
+| **VM 環境**  | `docker-compose.vm.yml`   | `vsv-emerald.skygroup.local` | VirtualBox 仮想マシン（本番環境テスト用） |
+| **開発環境** | `docker-compose.dev.yml`  | `localhost`                  | ローカル開発（Nginx のみ）                |
 
 ### 開発環境での Nginx のみ起動
 
@@ -499,6 +584,7 @@ docker compose -f docker-compose.prod.yml exec my-books-frontend curl http://loc
 VM 環境で起動する場合は、以下の点に注意してください：
 
 1. **ホスト名の設定**: ホストマシンの`/etc/hosts`に以下を追加
+
    ```
    192.168.56.XXX  vsv-emerald.skygroup.local
    ```
@@ -507,7 +593,7 @@ VM 環境で起動する場合は、以下の点に注意してください：
 
 3. **Keycloak への接続**: VM から VPS1（vsv-crystal）への接続を確認
    ```bash
-   curl -k https://vsv-crystal.skygroup.local/auth/realms/test-realm/.well-known/openid-configuration
+   curl -k https://vsv-crystal.skygroup.local/auth/realms/sample-realm/.well-known/openid-configuration
    ```
 
 ## ライセンス

@@ -2,11 +2,3 @@
 .env.production
 .env.local
 .env.*.local
-
-# docker-compose.yml
-# は用意されている
-# docker-compose.dev.yml
-# または
-# docker-compose.production.yml
-# からコピーして作成する
-docker-compose.yml

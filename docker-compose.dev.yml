@@ -9,13 +9,8 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - ./db/book_chapter_page_contents.csv:/docker-entrypoint-initdb.d/book_chapter_page_contents.csv
-      - ./db/book_favorites.csv:/docker-entrypoint-initdb.d/book_favorites.csv
-      - ./db/book_genres.csv:/docker-entrypoint-initdb.d/book_genres.csv
-      - ./db/book_reviews.csv:/docker-entrypoint-initdb.d/book_reviews.csv
-      - ./db/books.csv:/docker-entrypoint-initdb.d/books.csv
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./db:/docker-entrypoint-initdb.d
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf:ro
       - my-books-db-data:/var/lib/mysql
     networks:
       - vsv-emerald-network
@@ -40,7 +35,7 @@ services:
 
   # API
   my-books-api:
-    image: ${REGISTRY_HOSTNAME}/my-books-api:${API_TAG}
+    image: ${REGISTRY_HOSTNAME}/my-books-api:${MY_BOOKS_API_TAG}
     environment:
       TZ: Asia/Tokyo
       # Database Configuration
@@ -75,7 +70,7 @@ services:
 
   # BFF (Backend For Frontend)
   api-gateway-bff:
-    image: ${REGISTRY_HOSTNAME}/api-gateway-bff:${BFF_TAG}
+    image: ${REGISTRY_HOSTNAME}/api-gateway-bff:${API_GATEWAY_BFF_TAG}
     environment:
       TZ: Asia/Tokyo
       # Identity Provider (IdP) Configuration
@@ -85,7 +80,7 @@ services:
       # BFF関連のURL（VPS_HOSTNAMEから組み立てる）
       IDP_REDIRECT_URI: https://${VPS_HOSTNAME}/bff/login/oauth2/code/idp
       IDP_POST_LOGOUT_REDIRECT_URI: https://${VPS_HOSTNAME}/logout-complete
-      FRONTEND_URL: https://${VPS_HOSTNAME}
+      DEFAULT_FRONTEND_URL: https://${VPS_HOSTNAME}
       # CORS設定（マルチアプリケーション対応）
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://${VPS_HOSTNAME}}
       # Resource Servers Configuration (動的読み込み対応)
@@ -108,22 +103,22 @@ services:
       retries: 3
       start_period: 60s
 
-  # APP
-  my-books-frontend:
-    image: ${REGISTRY_HOSTNAME}/my-books-frontend:${FRONTEND_TAG}
-    environment:
-      TZ: Asia/Tokyo
-    networks:
-      - vsv-emerald-network
-    depends_on:
-      api-gateway-bff:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+  # # APP
+  # my-books-frontend:
+  #   image: ${REGISTRY_HOSTNAME}/my-books-frontend:${MY_BOOKS_FRONTEND_TAG}
+  #   environment:
+  #     TZ: Asia/Tokyo
+  #   networks:
+  #     - vsv-emerald-network
+  #   depends_on:
+  #     api-gateway-bff:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:80/"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
 
   # Nginx (通信窓口 / リバースプロキシ)
   nginx-edge:
@@ -138,7 +133,7 @@ services:
     networks:
       - vsv-emerald-network
     depends_on:
-      my-books-frontend:
+      api-gateway-bff:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
