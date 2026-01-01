@@ -183,8 +183,6 @@ services:
   # Nginx (通信窓口 / リバースプロキシ)
   nginx-edge:
     image: nginx:alpine
-    env_file:
-      - .env.vm
     restart: unless-stopped
     ports:
       - "80:80"
