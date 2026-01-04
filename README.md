@@ -374,11 +374,12 @@ vsv-emerald/
 8. **expose** - コンテナ間通信用のポート公開（内部のみ）
 9. **networks** - ネットワーク設定
 10. **depends_on** - サービス依存関係とヘルスチェック条件
-11. **command** - コマンドのオーバーライド
-12. **healthcheck** - ヘルスチェック設定
-13. **logging** - ログドライバーとオプション
-14. **deploy** - リソース制限などのデプロイ設定
-15. **secrets** - Docker Swarm 用シークレット（オプション）
+11. **entrypoint** - エントリポイントのオーバーライド
+12. **command** - コマンドのオーバーライド
+13. **healthcheck** - ヘルスチェック設定
+14. **logging** - ログドライバーとオプション
+15. **deploy** - リソース制限などのデプロイ設定
+16. **secrets** - Docker Swarm 用シークレット（オプション）
 
 #### 設定例
 
@@ -393,15 +394,15 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     volumes: # 6. ボリューム
       - my-books-db-data:/var/lib/mysql
-    command: --secure-file-priv=/data # 11. コマンド
-    healthcheck: # 12. ヘルスチェック
+    command: --secure-file-priv=/data # 12. コマンド
+    healthcheck: # 13. ヘルスチェック
       test: ["CMD", "mysqladmin", "ping"]
       interval: 10s
-    logging: # 13. ログ設定
+    logging: # 14. ログ設定
       driver: "json-file"
       options:
         max-size: "10m"
-    deploy: # 14. デプロイ設定
+    deploy: # 15. デプロイ設定
       resources:
         limits:
           cpus: "1.0"
