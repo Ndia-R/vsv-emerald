@@ -179,3 +179,26 @@
 - 「いつかやろう」と思っていることは、カレンダーに「やる日」として登録してしまいましょう。「いつか」を「今日」に変えるのは、ほんの少しの具体的なアクションです。
 
 - AI の回答が期待と違ったとき、それは AI のせいだけではないかも。「こういう情報が欲しい」という背景や文脈を付け加えるだけで、回答の精度は劇的に向上します。
+ 
+
+イメージ作成
+docker image build --no-cache --target production -t vsv-crystal.skygroup.local/api-gateway-bff:1.0.0 .
+
+docker image build --no-cache --target production -t vsv-crystal.skygroup.local/my-books-api:1.0.0 .
+
+docker image build --no-cache --target production -t vsv-crystal.skygroup.local/my-books-frontend:1.0.0 .
+
+
+イメージpush
+docker push vsv-crystal.skygroup.local/api-gateway-bff:1.0.0
+
+docker push vsv-crystal.skygroup.local/my-books-api:1.0.0
+
+docker push vsv-crystal.skygroup.local/my-books-frontend:1.0.0
+
+イメージpull
+docker pull vsv-crystal.skygroup.local/api-gateway-bff:1.0.0
+
+docker pull vsv-crystal.skygroup.local/my-books-api:1.0.0
+
+docker pull vsv-crystal.skygroup.local/my-books-frontend:1.0.0
