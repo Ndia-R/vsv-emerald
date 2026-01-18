@@ -81,7 +81,8 @@ services:
       SERVER_ERROR_INCLUDE_MESSAGE: ${SERVER_ERROR_INCLUDE_MESSAGE:-never}
       SERVER_ERROR_INCLUDE_STACKTRACE: ${SERVER_ERROR_INCLUDE_STACKTRACE:-never}
       # Logging
-      LOGGING_LEVEL: ${LOGGING_LEVEL:-INFO}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
     depends_on:
       my-books-db:
         condition: service_healthy
@@ -125,8 +126,12 @@ services:
       RESOURCE_SERVERS: ${RESOURCE_SERVERS}
       SERVICE_01_URL: ${SERVICE_01_URL}
       SERVICE_01_PATH_PREFIX: ${SERVICE_01_PATH_PREFIX}
+      # Session Configuration
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
       # Logging Settings
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
     depends_on:
       redis:
         condition: service_healthy
