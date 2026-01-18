@@ -109,22 +109,22 @@ services:
       retries: 3
       start_period: 60s
 
-  # APP
-  my-books-frontend:
-    image: ${REGISTRY_HOSTNAME}/my-books-frontend:${MY_BOOKS_FRONTEND_TAG}
-    environment:
-      TZ: Asia/Tokyo
-    networks:
-      - vsv-emerald-network
-    depends_on:
-      api-gateway-bff:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+  # # APP
+  # my-books-frontend:
+  #   image: ${REGISTRY_HOSTNAME}/my-books-frontend:${MY_BOOKS_FRONTEND_TAG}
+  #   environment:
+  #     TZ: Asia/Tokyo
+  #   networks:
+  #     - vsv-emerald-network
+  #   depends_on:
+  #     api-gateway-bff:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:80/"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
 
   # Nginx (通信窓口 / リバースプロキシ)
   nginx-edge:
