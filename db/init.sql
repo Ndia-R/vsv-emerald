@@ -12,6 +12,7 @@ CREATE DATABASE `my-books-db` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `my-books-db`;
 
 -- 外部キー制約を考慮した削除順序（依存関係の逆順）
+DROP TABLE IF EXISTS `book_preview_settings`;
 DROP TABLE IF EXISTS `bookmarks`;
 DROP TABLE IF EXISTS `book_chapter_page_contents`;
 DROP TABLE IF EXISTS `book_chapters`;
@@ -131,6 +132,18 @@ CREATE TABLE `bookmarks` (
   UNIQUE (`user_id`, `page_content_id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`page_content_id`) REFERENCES `book_chapter_page_contents`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `book_preview_settings` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `book_id` VARCHAR(255) NOT NULL,
+  `max_chapter` BIGINT NOT NULL DEFAULT 1,    -- 試し読み可能な最大章番号（-1で全章開放）
+  `max_page` BIGINT NOT NULL DEFAULT -1,     -- 最大章内の最大ページ番号（-1で章末まで開放）
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_deleted` BOOLEAN NOT NULL DEFAULT FALSE,
+  UNIQUE KEY `uk_book_preview` (`book_id`),
+  FOREIGN KEY (`book_id`) REFERENCES `books`(`id`) ON DELETE CASCADE
 );
 
 -- データのロード
@@ -301,9 +314,23 @@ UNION ALL SELECT '57522d38-525b-4c19-b693-c30de02f59e6', pc.id, '隠されたメ
 UNION ALL SELECT 'c44a0ef0-7d73-4e54-bd27-afeafba6b19b', pc.id, '絶体絶命' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 6 AND pc.page_number = 1
 UNION ALL SELECT 'e370ccc5-55a2-4b77-8148-93ee53052c52', pc.id, '銀河の旅' FROM book_chapter_page_contents pc WHERE pc.book_id = 'bU4W2hM7x9D5' AND pc.chapter_number = 7 AND pc.page_number = 1;
 
--- ================================= ================
+-- 試し読み設定の初期データ
+-- max_chapter: 試し読み可能な最大章番号（-1で全章開放）
+-- max_page: 最大章内の最大ページ番号（-1で章末まで開放）
+
+INSERT INTO `book_preview_settings`
+(`book_id`, `max_chapter`, `max_page`)
+VALUES
+('afcIMuetDuzj', 1, -1),      -- 第1章全体
+('aBcDeFgHiJkL', 2, 3),       -- 第2章3ページまで
+('C4hD3jZ8rK6e', 1, -1),      -- 第1章全体
+('Hh5r4Kj9Tb8v', 2, 1),       -- 第2章1ページまで
+('dJ4fLnQ2ZcR3', 2, -1),      -- 第2章全体
+('bU4W2hM7x9D5', 1, -1);      -- 第1章全体
+
+-- =================================================
 -- パフォーマンス最適化のためのインデックス追加
--- ================================= ================
+-- =================================================
 
 -- 書籍関連の基本インデックス（カバリングインデックスで代替されないもののみ）
 CREATE INDEX idx_books_title ON books(title);
