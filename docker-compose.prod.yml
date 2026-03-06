@@ -172,13 +172,6 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Tokyo
-      # Identity Provider (IdP) Configuration
-      IDP_CLIENT_ID: ${IDP_CLIENT_ID}
-      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
-      IDP_ISSUER_URI: ${IDP_ISSUER_URI}
-      # Logging Settings
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY:-INFO}
     networks:
       - vsv-emerald-network
     depends_on:
@@ -208,18 +201,16 @@ services:
   nginx-edge:
     image: nginx:alpine
     restart: unless-stopped
-    networks:
-      - vsv-emerald-network
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
-    ports:
-      - "80:80"
-      - "443:443"
+    networks:
+      - vsv-emerald-network
     depends_on:
-      my-books-frontend:
-        condition: service_healthy
       api-gateway-bff:
         condition: service_healthy
     healthcheck:
