@@ -33,7 +33,7 @@ services:
       timeout: 3s
       retries: 3
 
-  # # API
+  # API
   my-books-api:
     image: ${REGISTRY_HOSTNAME}/my-books-api:${MY_BOOKS_API_TAG}
     environment:
