@@ -40,26 +40,32 @@ VPS 2 台構成のうち **VPS2（Web アプリケーション本体）** を管
 ユーザー (HTTPS)
     ↓
 nginx-edge (リバースプロキシ)
-    ├─ / → my-books-frontend (React SPA)
-    └─ /api → api-gateway-bff (認証ゲートウェイ)
-              ├─ VPS1 Keycloak (OIDC認証)
-              ├─ Redis (トークン管理)
-              └─ my-books-api (バックエンドAPI)
-                   └─ my-books-db (MySQL)
+    ├─ /          → ウェルカムページ (HTML)
+    ├─ /my-books/ → my-books-frontend (React SPA)
+    ├─ /bff       → api-gateway-bff (認証ゲートウェイ)
+    ├─ /api       → api-gateway-bff (認証ゲートウェイ)
+    └─ /oauth2    → api-gateway-bff (認証ゲートウェイ)
+                    ├─ VPS1 Keycloak (OIDC認証)
+                    ├─ Redis (セッション管理)
+                    └─ my-books-api (バックエンドAPI)
+                         └─ my-books-db (MySQL)
 ```
 
 ### 起動するサービス
 
-| サービス名          | イメージ                   | ポート  | 役割                            |
-| ------------------- | -------------------------- | ------- | ------------------------------- |
-| `nginx-edge`        | nginx:alpine               | 80, 443 | HTTPS リバースプロキシ          |
-| `my-books-frontend` | Registry/my-books-frontend | 80      | フロントエンド（React + Vite）  |
-| `api-gateway-bff`   | Registry/api-gateway-bff   | 8080    | 認証ゲートウェイ（Spring Boot） |
-| `my-books-api`      | Registry/my-books-api      | 8080    | リソースサーバー（Spring Boot） |
-| `my-books-db`       | mysql:8.0                  | 3306    | アプリケーション DB             |
-| `redis`             | redis:8.2                  | 6379    | セッション/トークン管理         |
+| サービス名          | イメージ                   | ポート  | 環境             | 役割                            |
+| ------------------- | -------------------------- | ------- | ---------------- | ------------------------------- |
+| `nginx-edge`        | nginx:alpine               | 80, 443 | 全環境           | HTTPS リバースプロキシ          |
+| `my-books-frontend` | Registry/my-books-frontend | 80      | prod / vm        | フロントエンド（React + Vite）  |
+| `api-gateway-bff`   | Registry/api-gateway-bff   | 8080    | 全環境           | 認証ゲートウェイ（Spring Boot） |
+| `my-books-api`      | Registry/my-books-api      | 8080    | 全環境           | リソースサーバー（Spring Boot） |
+| `my-books-db`       | mysql:8.0                  | 3306    | 全環境           | アプリケーション DB             |
+| `redis`             | redis:8.2                  | 6379    | 全環境           | セッション管理                  |
+| `token-learn`       | Registry/token-learn       | 8080    | dev のみ         | トークン学習用ツール（開発用）  |
 
-詳細なアーキテクチャ図とフローについては、[system-architecture-overview-vps2.md](system-architecture-overview-vps2.md) を参照してください。
+> **注意**: `my-books-frontend` は `docker-compose.dev.yml` ではコメントアウトされており、開発環境では Vite 開発サーバー（`http://localhost:5173`）を使用します。
+
+詳細なアーキテクチャ図とフローについては、[system-architecture-overview-vps2.md](docs/system-architecture-overview-vps2.md) を参照してください。
 
 ## 前提条件
 
@@ -82,9 +88,9 @@ nginx-edge (リバースプロキシ)
 
 以下のイメージが VPS1 Registry に登録されていること：
 
-- `vsv-crystal.skygroup.local/my-books-frontend:v1.0.0`
-- `vsv-crystal.skygroup.local/api-gateway-bff:v1.0.0`
-- `vsv-crystal.skygroup.local/my-books-api:v1.0.0`
+- `vsv-crystal.skygroup.local/my-books-frontend:1.0.0`
+- `vsv-crystal.skygroup.local/api-gateway-bff:1.0.0`
+- `vsv-crystal.skygroup.local/my-books-api:1.0.0`
 
 ## セットアップ
 
@@ -121,12 +127,12 @@ vi .env
 
 ```bash
 # 本番証明書をコピー
-cp /path/to/your/certificate.crt nginx/ssl/vsv-emerald.skygroup.local.pem
-cp /path/to/your/private-key.key nginx/ssl/vsv-emerald.skygroup.local-key.pem
+cp /path/to/your/certificate.cer nginx/ssl/CUS_skygroup_local.cer
+cp /path/to/your/private-key.key nginx/ssl/CUS_skygroup_local.key
 
 # パーミッション設定
-chmod 644 nginx/ssl/vsv-emerald.skygroup.local.pem
-chmod 600 nginx/ssl/vsv-emerald.skygroup.local-key.pem
+chmod 644 nginx/ssl/CUS_skygroup_local.cer
+chmod 600 nginx/ssl/CUS_skygroup_local.key
 ```
 
 #### VirtualBox VM 環境
@@ -234,9 +240,9 @@ docker compose -f docker-compose.prod.yml down -v
 ```bash
 # .envファイルでイメージタグを更新
 vi .env
-# API_TAG=v1.0.1
-# BFF_TAG=v1.0.1
-# FRONTEND_TAG=v1.0.1
+# MY_BOOKS_API_TAG=1.0.1
+# API_GATEWAY_BFF_TAG=1.0.1
+# MY_BOOKS_FRONTEND_TAG=1.0.1
 
 # 新しいイメージをプル
 docker compose -f docker-compose.prod.yml pull
@@ -256,12 +262,12 @@ docker compose -f docker-compose.prod.yml up -d --no-deps my-books-frontend
 
 ### Docker Registry 設定
 
-| 変数名              | 説明                         | 設定例                       |
-| ------------------- | ---------------------------- | ---------------------------- |
-| `REGISTRY_HOSTNAME` | VPS1 の Registry ホスト名    | `vsv-crystal.skygroup.local` |
-| `API_TAG`           | API イメージのタグ           | `v1.0.0`                     |
-| `BFF_TAG`           | BFF イメージのタグ           | `v1.0.0`                     |
-| `FRONTEND_TAG`      | フロントエンドイメージのタグ | `v1.0.0`                     |
+| 変数名                  | 説明                         | 設定例                       |
+| ----------------------- | ---------------------------- | ---------------------------- |
+| `REGISTRY_HOSTNAME`     | VPS1 の Registry ホスト名    | `vsv-crystal.skygroup.local` |
+| `MY_BOOKS_API_TAG`      | API イメージのタグ           | `1.0.0`                      |
+| `API_GATEWAY_BFF_TAG`   | BFF イメージのタグ           | `1.0.0`                      |
+| `MY_BOOKS_FRONTEND_TAG` | フロントエンドイメージのタグ | `1.0.0`                      |
 
 ### VPS 設定
 
@@ -271,39 +277,56 @@ docker compose -f docker-compose.prod.yml up -d --no-deps my-books-frontend
 
 ### データベース設定
 
-| 変数名             | 説明                           | 設定例                      |
-| ------------------ | ------------------------------ | --------------------------- |
-| `DB_ROOT_PASSWORD` | MySQL の root パスワード       | `your-secure-root-password` |
-| `DB_NAME`          | アプリケーション DB 名         | `my_books_db`               |
-| `DB_USER`          | アプリケーション DB ユーザー   | `app_user`                  |
-| `DB_PASSWORD`      | アプリケーション DB パスワード | `your-secure-db-password`   |
+| 変数名             | 説明                           | 設定例                              |
+| ------------------ | ------------------------------ | ----------------------------------- |
+| `DB_NAME`          | アプリケーション DB 名         | `my-books-db`                       |
+| `DB_URL`           | JDBC 接続 URL                  | `jdbc:mysql://my-books-db:3306/my-books-db` |
+| `DB_USER`          | アプリケーション DB ユーザー   | `user`                              |
+| `DB_PASSWORD`      | アプリケーション DB パスワード | `your-secure-db-password`           |
+| `DB_ROOT_PASSWORD` | MySQL の root パスワード       | `your-secure-root-password`         |
 
 ### OAuth2/OIDC 設定
 
-| 変数名              | 説明                            | 設定例                                                        |
-| ------------------- | ------------------------------- | ------------------------------------------------------------- |
-| `IDP_CLIENT_ID`     | OAuth2 クライアント ID          | `api-gateway-bff-client`                                      |
-| `IDP_CLIENT_SECRET` | OAuth2 クライアントシークレット | `your-client-secret`                                          |
-| `IDP_ISSUER_URI`    | Keycloak の issuer URI          | `https://vsv-crystal.skygroup.local/auth/realms/sample-realm` |
+| 変数名                   | 説明                                          | 設定例                                                              |
+| ------------------------ | --------------------------------------------- | ------------------------------------------------------------------- |
+| `IDP_CLIENT_ID`          | OAuth2 クライアント ID                        | `api-gateway-bff-client`                                            |
+| `IDP_CLIENT_SECRET`      | OAuth2 クライアントシークレット               | `your-client-secret`                                                |
+| `IDP_ISSUER_URI`         | Keycloak の issuer URI                        | `https://vsv-crystal.skygroup.local/auth/realms/sample-realm`       |
+| `IDP_REGISTRATION_PATH`  | IdP の登録エンドポイントパス（issuer-uri 相対）| `/protocol/openid-connect/registrations`                            |
+
+### CORS 設定
+
+| 変数名                  | 説明                                       | 設定例                                  |
+| ----------------------- | ------------------------------------------ | --------------------------------------- |
+| `CORS_ALLOWED_ORIGINS`  | BFF が許可するオリジン（カンマ区切り）     | `https://vsv-emerald.skygroup.local`    |
 
 ### バックエンドサービス設定
 
-| 変数名                   | 説明                     | 設定例                     |
-| ------------------------ | ------------------------ | -------------------------- |
-| `SERVICE_01_URL`         | バックエンド API の URL  | `http://my-books-api:8080` |
-| `SERVICE_01_PATH_PREFIX` | API のパスプレフィックス | `/my-books`                |
+| 変数名                   | 説明                                            | 設定例                     |
+| ------------------------ | ----------------------------------------------- | -------------------------- |
+| `RESOURCE_SERVERS`       | 有効にするサービス識別子（カンマ区切り）        | `service-01`               |
+| `SERVICE_01_URL`         | バックエンド API の URL                         | `http://my-books-api:8080` |
+| `SERVICE_01_PATH_PREFIX` | API のパスプレフィックス                        | `/my-books`                |
 
-複数のバックエンドサービスを追加する場合は、`SERVICE_02_URL`から`SERVICE_05_URL`まで設定可能です。
+追加サービスを登録する場合は `RESOURCE_SERVERS` にカンマ区切りで追加し、対応する `SERVICE_02_URL` / `SERVICE_02_PATH_PREFIX` を設定します（最大 `SERVICE_05` まで対応）。
+
+### セッション設定
+
+| 変数名                  | 説明                                          | デフォルト値 |
+| ----------------------- | --------------------------------------------- | ------------ |
+| `SESSION_TIMEOUT`       | セッションタイムアウト（Duration 形式）       | `12h`        |
+| `SESSION_COOKIE_SECURE` | Cookie の Secure 属性（本番: `true`）         | `false`      |
 
 ### データベース詳細設定（オプション）
 
-| 変数名                          | 説明                              | デフォルト値 |
-| ------------------------------- | --------------------------------- | ------------ |
-| `SPRING_JPA_SHOW_SQL`           | SQL クエリをログに出力            | `false`      |
-| `SPRING_JPA_FORMAT_SQL`         | SQL クエリを整形して出力          | `false`      |
-| `DATASOURCE_POOL_MAX_SIZE`      | DB コネクションプール最大サイズ   | `20`         |
-| `DATASOURCE_POOL_MIN_IDLE`      | DB コネクションプール最小アイドル | `10`         |
-| `DATASOURCE_CONNECTION_TIMEOUT` | DB 接続タイムアウト（ミリ秒）     | `30000`      |
+| 変数名                                              | 説明                                               | デフォルト値 |
+| --------------------------------------------------- | -------------------------------------------------- | ------------ |
+| `DATASOURCE_POOL_MAX_SIZE`                          | DB コネクションプール最大サイズ                    | `20`         |
+| `DATASOURCE_POOL_MIN_IDLE`                          | DB コネクションプール最小アイドル                  | `10`         |
+| `DATASOURCE_CONNECTION_TIMEOUT`                     | DB 接続タイムアウト（ミリ秒）                      | `30000`      |
+| `SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT` | HikariCP 初期化失敗タイムアウト（ミリ秒、0 以下で無期限待機） | `60000` |
+| `SPRING_JPA_SHOW_SQL`                               | SQL クエリをログに出力                             | `false`      |
+| `SPRING_JPA_FORMAT_SQL`                             | SQL クエリを整形して出力                           | `false`      |
 
 ### エラーレスポンス設定（オプション）
 
@@ -314,33 +337,40 @@ docker compose -f docker-compose.prod.yml up -d --no-deps my-books-frontend
 
 ### ログ設定
 
-| 変数名          | 説明             | 設定値                          |
-| --------------- | ---------------- | ------------------------------- |
-| `LOG_LEVEL`     | ログレベル       | `INFO`（本番）/ `DEBUG`（開発） |
-| `LOGGING_LEVEL` | API のログレベル | `INFO`（本番）/ `DEBUG`（開発） |
+| 変数名               | 説明                              | 設定値                           |
+| -------------------- | --------------------------------- | -------------------------------- |
+| `LOG_LEVEL`          | root ログレベル                   | `INFO`（本番）/ `DEBUG`（開発）  |
+| `LOG_LEVEL_SECURITY` | Spring Security 向けログレベル    | `WARN`（本番）/ `INFO`（開発）   |
 
 ## プロジェクト構成
 
 ```
 vsv-emerald/
 ├── README.md                              # このファイル
-├── system-architecture-overview-vps2.md   # 詳細アーキテクチャドキュメント
 ├── .env                                   # 環境変数（Git管理外）
 ├── .env.example                           # 環境変数テンプレート
 ├── .gitignore                             # Git除外設定
-├── docker-compose.yml                     # 開発用設定（Git管理外）
-├── docker-compose.dev.yml                 # 開発環境テンプレート（Nginxのみ）
+├── docker-compose.dev.yml                 # 開発環境設定（DB・API・BFF・token-learn・Nginx）
 ├── docker-compose.prod.yml                # 本番環境設定
 ├── docker-compose.vm.yml                  # VirtualBox VM環境設定
+├── docs/                                  # ドキュメント
+│   └── system-architecture-overview-vps2.md  # 詳細アーキテクチャドキュメント
 ├── db/                                    # データベース関連
 │   ├── my.cnf                             # MySQL設定ファイル
-│   └── my-books-backup-YYYYMMDD.sql       # データベースバックアップ
+│   ├── init.sql                           # DBスキーマ＋初期データ投入スクリプト
+│   ├── ER図.mmd                           # ER図（Mermaid形式）
+│   ├── books.csv                          # 書籍データ
+│   ├── book_genres.csv                    # 書籍ジャンルデータ
+│   ├── book_reviews.csv                   # レビューデータ
+│   ├── book_favorites.csv                 # お気に入りデータ
+│   └── book_chapter_page_contents.csv     # 章・ページコンテンツデータ
 ├── nginx/                                 # 本番環境Nginx設定
 │   ├── nginx.conf                         # Nginxメイン設定
 │   ├── conf.d/
 │   │   └── default.conf                   # サーバーブロック設定
 │   └── ssl/
-│       └── 本番環境用の証明書を配置.txt   # 証明書配置ガイド
+│       ├── CUS_skygroup_local.cer         # 本番環境SSL証明書
+│       └── CUS_skygroup_local.key         # 本番環境SSL秘密鍵
 ├── nginx-dev/                             # 開発環境Nginx設定（localhost用）
 │   ├── nginx.conf                         # 開発用Nginxメイン設定
 │   ├── conf.d/
@@ -454,33 +484,28 @@ logging:
 | ------------ | ------------------------- | ---------------------------- | ----------------------------------------- |
 | **本番環境** | `docker-compose.prod.yml` | `vsv-emerald.skygroup.local` | 本番 VPS サーバー                         |
 | **VM 環境**  | `docker-compose.vm.yml`   | `vsv-emerald.skygroup.local` | VirtualBox 仮想マシン（本番環境テスト用） |
-| **開発環境** | `docker-compose.dev.yml`  | `localhost`                  | ローカル開発（Nginx のみ）                |
+| **開発環境** | `docker-compose.dev.yml`  | `localhost`                  | ローカル開発（全バックエンドサービス）    |
 
-### 開発環境での Nginx のみ起動
+### 開発環境での起動
 
-開発時は、フロントエンド・BFF・API はローカルで個別に起動し、Nginx のみコンテナで起動する構成が可能です。
+`docker-compose.dev.yml` を使用すると、DB・Redis・API・BFF・token-learn・Nginx の全バックエンドサービスをコンテナで起動できます。フロントエンドはコメントアウトされており、Vite 開発サーバーをローカルで個別に起動する構成です。
 
 ```bash
-# docker-compose.dev.ymlをdocker-compose.ymlとしてコピー
-cp docker-compose.dev.yml docker-compose.yml
-
-# 外部ネットワーク作成
+# 外部ネットワーク作成（初回のみ）
 docker network create vsv-emerald-network
 
-# Nginxのみ起動
-docker compose up -d
+# 起動
+docker compose -f docker-compose.dev.yml up -d
 
 # 確認
-docker compose ps
+docker compose -f docker-compose.dev.yml ps
 ```
 
 この構成では：
 
-- フロントエンド: `http://localhost:5173`（Vite 開発サーバー）
-- BFF: `http://localhost:8081`（Spring Boot）
-- API: `http://localhost:8080`（Spring Boot）
-
-上記サービスをローカルで起動し、Nginx が`https://localhost`でリバースプロキシとして機能します。
+- フロントエンド: `http://localhost:5173`（Vite 開発サーバー、ローカル起動）
+- Nginx リバースプロキシ: `https://localhost`
+- token-learn（OAuth2 トークン学習ツール）: コンテナで自動起動
 
 ### VirtualBox VM 環境での開発
 
@@ -503,6 +528,7 @@ docker compose -f docker-compose.vm.yml ps
 - **my-books-frontend**: React + Vite フロントエンド
 - **api-gateway-bff**: Spring Boot 認証ゲートウェイ
 - **my-books-api**: Spring Boot リソースサーバー
+- **token-learn**: OAuth2/OIDC トークン学習用ツール（開発環境のみ）
 
 ## トラブルシューティング
 
@@ -530,8 +556,8 @@ docker compose -f docker-compose.prod.yml logs my-books-db
 # DBへ接続確認
 docker compose -f docker-compose.prod.yml exec my-books-db mysql -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME}
 
-# DBバックアップからの復元（VM環境など）
-docker compose -f docker-compose.vm.yml exec -i my-books-db mysql -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < db/my-books-backup-YYYYMMDD.sql
+# 初期データの再投入（init.sql を再実行する場合）
+docker compose -f docker-compose.vm.yml exec -i my-books-db mysql -u${DB_USER} -p${DB_PASSWORD} ${DB_NAME} < db/init.sql
 ```
 
 ### Keycloak 認証エラー
@@ -561,11 +587,11 @@ sudo update-ca-certificates
 
 ```bash
 # 証明書の有効期限確認
-openssl x509 -in nginx/ssl/vsv-emerald.skygroup.local.pem -noout -dates
+openssl x509 -in nginx/ssl/CUS_skygroup_local.cer -noout -dates
 
 # 証明書とキーのペア確認
-openssl x509 -in nginx/ssl/vsv-emerald.skygroup.local.pem -noout -modulus | openssl md5
-openssl rsa -in nginx/ssl/vsv-emerald.skygroup.local-key.pem -noout -modulus | openssl md5
+openssl x509 -in nginx/ssl/CUS_skygroup_local.cer -noout -modulus | openssl md5
+openssl rsa -in nginx/ssl/CUS_skygroup_local.key -noout -modulus | openssl md5
 # 上記2つのハッシュ値が一致すること
 ```
 
@@ -605,7 +631,7 @@ VM 環境で起動する場合は、以下の点に注意してください：
 
 問題が発生した場合は、以下を確認してください：
 
-1. [system-architecture-overview-vps2.md](system-architecture-overview-vps2.md) - 詳細なアーキテクチャドキュメント
+1. [system-architecture-overview-vps2.md](docs/system-architecture-overview-vps2.md) - 詳細なアーキテクチャドキュメント
 2. 各コンポーネントのログ
 3. VPS1（vsv-crystal）の稼働状態
 
