@@ -40,10 +40,13 @@ services:
   redis:
     image: redis:8.2
     restart: unless-stopped
+    command: redis-server --requirepass ${SPRING_DATA_REDIS_PASSWORD}
+    environment:
+      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD}
     networks:
       - vsv-emerald-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $SPRING_DATA_REDIS_PASSWORD ping"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -87,6 +90,8 @@ services:
       # Logging
       LOG_LEVEL: ${LOG_LEVEL}
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
+      # Forwarded Headers（nginx プレフィックス補正用）
+      SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
     networks:
       - vsv-emerald-network
     depends_on:
@@ -135,7 +140,9 @@ services:
       SERVICE_01_PATH_PREFIX: ${SERVICE_01_PATH_PREFIX}
       # Session Configuration
       SESSION_TIMEOUT: ${SESSION_TIMEOUT}
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      # Redis Password（Spring Session用）
+      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD}
       # Logging Settings
       LOG_LEVEL: ${LOG_LEVEL}
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
@@ -165,6 +172,32 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
+
+  # Token Learn
+  token-learn:
+    image: ${REGISTRY_HOSTNAME}/token-learn:1.0.0
+    environment:
+      TZ: Asia/Tokyo
+      # Identity Provider (IdP) Configuration
+      IDP_CLIENT_ID: ${IDP_CLIENT_ID}
+      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
+      IDP_ISSUER_URI: ${IDP_ISSUER_URI}
+      # Logging Settings
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY:-INFO}
+      # Forwarded Headers（nginx プレフィックス補正用）
+      SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
+    networks:
+      - vsv-emerald-network
+    depends_on:
+      api-gateway-bff:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   # APP
   my-books-frontend:
@@ -211,7 +244,7 @@ services:
     networks:
       - vsv-emerald-network
     depends_on:
-      api-gateway-bff:
+      token-learn:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
