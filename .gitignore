@@ -1,4 +1,8 @@
+### env files ###
 .env
 .env.production
 .env.local
 .env.*.local
+
+# Docker secrets files
+secrets/

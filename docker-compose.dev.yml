@@ -2,36 +2,45 @@ services:
   # DB
   my-books-db:
     image: mysql:8.0
+    command: --secure-file-priv=/docker-entrypoint-initdb.d
+    networks:
+      - vsv-emerald-network
     environment:
       TZ: Asia/Tokyo
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/my_books_db_root_password
+      MYSQL_PASSWORD_FILE: /run/secrets/my_books_db_password
+    secrets:
+      - my_books_db_root_password
+      - my_books_db_password
     volumes:
       - ./db:/docker-entrypoint-initdb.d
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf:ro
       - my-books-db-data:/var/lib/mysql
-    networks:
-      - vsv-emerald-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-    command: --secure-file-priv=/docker-entrypoint-initdb.d
 
   # Redis
   redis:
     image: redis:8.2
-    command: redis-server --requirepass ${SPRING_DATA_REDIS_PASSWORD}
-    environment:
-      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD}
+    command: sh -c "redis-server --requirepass $$(cat /run/secrets/redis_password)"
     networks:
       - vsv-emerald-network
+    secrets:
+      - redis_password
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $SPRING_DATA_REDIS_PASSWORD ping"]
+      test:
+        [
+          "CMD",
+          "sh",
+          "-c",
+          "redis-cli -a $$(cat /run/secrets/redis_password) ping",
+        ]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -39,12 +48,13 @@ services:
   # API
   my-books-api:
     image: ${REGISTRY_HOSTNAME}/my-books-api:${MY_BOOKS_API_TAG}
+    networks:
+      - vsv-emerald-network
     environment:
       TZ: Asia/Tokyo
       # Database Configuration
       SPRING_DATASOURCE_URL: ${DB_URL}
       SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: ${SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT:-60000}
       # Identity Provider (IdP) Configuration
       IDP_ISSUER_URI: ${IDP_ISSUER_URI}
@@ -63,8 +73,8 @@ services:
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
       # Forwarded Headers（nginx プレフィックス補正用）
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
-    networks:
-      - vsv-emerald-network
+    secrets:
+      - my_books_db_password
     depends_on:
       my-books-db:
         condition: service_healthy
@@ -78,11 +88,12 @@ services:
   # BFF (Backend For Frontend)
   api-gateway-bff:
     image: ${REGISTRY_HOSTNAME}/api-gateway-bff:${API_GATEWAY_BFF_TAG}
+    networks:
+      - vsv-emerald-network
     environment:
       TZ: Asia/Tokyo
       # Identity Provider (IdP) Configuration
       IDP_CLIENT_ID: ${IDP_CLIENT_ID}
-      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
       IDP_ISSUER_URI: ${IDP_ISSUER_URI}
       IDP_REGISTRATION_PATH: ${IDP_REGISTRATION_PATH}
       # BFF関連のURL（VPS_HOSTNAMEから組み立てる）
@@ -98,13 +109,12 @@ services:
       # Session Configuration
       SESSION_TIMEOUT: ${SESSION_TIMEOUT}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
-      # Redis Password（Spring Session用）
-      SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD}
       # Logging Settings
       LOG_LEVEL: ${LOG_LEVEL}
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
-    networks:
-      - vsv-emerald-network
+    secrets:
+      - redis_password
+      - idp_client_secret
     depends_on:
       redis:
         condition: service_healthy
@@ -120,6 +130,8 @@ services:
   # Token Learn
   token-learn:
     image: ${REGISTRY_HOSTNAME}/token-learn:1.0.0
+    networks:
+      - vsv-emerald-network
     environment:
       TZ: Asia/Tokyo
       # Identity Provider (IdP) Configuration
@@ -131,8 +143,6 @@ services:
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY:-INFO}
       # Forwarded Headers（nginx プレフィックス補正用）
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
-    networks:
-      - vsv-emerald-network
     depends_on:
       api-gateway-bff:
         condition: service_healthy
@@ -146,10 +156,10 @@ services:
   # # APP
   # my-books-frontend:
   #   image: ${REGISTRY_HOSTNAME}/my-books-frontend:${MY_BOOKS_FRONTEND_TAG}
-  #   environment:
-  #     TZ: Asia/Tokyo
   #   networks:
   #     - vsv-emerald-network
+  #   environment:
+  #     TZ: Asia/Tokyo
   #   depends_on:
   #     api-gateway-bff:
   #       condition: service_healthy
@@ -166,12 +176,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      - vsv-emerald-network
     volumes:
       - ./nginx-dev/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx-dev/conf.d:/etc/nginx/conf.d:ro
       - ./nginx-dev/ssl:/etc/nginx/ssl:ro
-    networks:
-      - vsv-emerald-network
     depends_on:
       token-learn:
         condition: service_healthy
@@ -182,9 +192,19 @@ services:
       retries: 3
       start_period: 10s
 
-volumes:
-  my-books-db-data:
-
 networks:
   vsv-emerald-network:
     external: true
+
+secrets:
+  redis_password:
+    file: ./secrets/redis_password
+  idp_client_secret:
+    file: ./secrets/idp_client_secret
+  my_books_db_root_password:
+    file: ./secrets/my_books_db_root_password
+  my_books_db_password:
+    file: ./secrets/my_books_db_password
+
+volumes:
+  my-books-db-data:
