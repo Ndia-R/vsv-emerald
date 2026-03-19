@@ -7,10 +7,13 @@ services:
       - vsv-emerald-network
     environment:
       TZ: Asia/Tokyo
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${MY_BOOKS_DB_NAME}
+      MYSQL_USER: ${MY_BOOKS_DB_USER}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/my_books_db_root_password
+      MYSQL_PASSWORD_FILE: /run/secrets/my_books_db_password
+    secrets:
+      - my_books_db_root_password
+      - my_books_db_password
     volumes:
       - ./db:/docker-entrypoint-initdb.d
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf:ro
@@ -78,9 +81,8 @@ services:
     environment:
       TZ: Asia/Tokyo
       # Database Configuration
-      SPRING_DATASOURCE_URL: ${DB_URL}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATASOURCE_URL: ${MY_BOOKS_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${MY_BOOKS_DB_USER}
       SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT: ${SPRING_DATASOURCE_HIKARI_INITIALIZATION_FAIL_TIMEOUT:-60000}
       # Identity Provider (IdP) Configuration
       IDP_ISSUER_URI: ${IDP_ISSUER_URI}
@@ -99,6 +101,8 @@ services:
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
       # Forwarded Headers（nginx プレフィックス補正用）
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
+    secrets:
+      - my_books_db_password
     depends_on:
       my-books-db:
         condition: service_healthy
@@ -188,13 +192,14 @@ services:
       TZ: Asia/Tokyo
       # Identity Provider (IdP) Configuration
       IDP_CLIENT_ID: ${IDP_CLIENT_ID}
-      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
       IDP_ISSUER_URI: ${IDP_ISSUER_URI}
       # Logging Settings
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY:-INFO}
       # Forwarded Headers（nginx プレフィックス補正用）
       SERVER_FORWARD_HEADERS_STRATEGY: FRAMEWORK
+    secrets:
+      - idp_client_secret
     depends_on:
       api-gateway-bff:
         condition: service_healthy
@@ -281,6 +286,10 @@ secrets:
     file: ./secrets/redis_password
   idp_client_secret:
     file: ./secrets/idp_client_secret
+  my_books_db_root_password:
+    file: ./secrets/my_books_db_root_password
+  my_books_db_password:
+    file: ./secrets/my_books_db_password
 
 volumes:
   my-books-db-data:
